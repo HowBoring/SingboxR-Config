@@ -89,7 +89,8 @@
       "interrupt_exist_connections": false,
       "providers": [
         "Airport-A",
-        "Airport-B"
+        "Airport-B",
+        "Claude-Dedicated"
       ]
     },
     {

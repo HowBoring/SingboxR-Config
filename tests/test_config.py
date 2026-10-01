@@ -7,8 +7,10 @@ import re
 import shutil
 import tempfile
 import unittest
+import sys
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
 spec = importlib.util.spec_from_file_location("manage", ROOT / "scripts/manage.py")
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
@@ -87,8 +89,10 @@ class StructureTests(unittest.TestCase):
             m.lint(self.c)
     def test_normal_isolation(self):
         for g in self.c["outbounds"]:
-            if g["tag"] != "CLAUDE":
+            if g["tag"] not in ("CLAUDE", "MANUAL"):
                 self.assertNotIn("Claude-Dedicated", g.get("providers", []))
+        manual = next(g for g in self.c["outbounds"] if g["tag"] == "MANUAL")
+        self.assertIn("Claude-Dedicated", manual["providers"])
     def test_failsafe_outbound(self):
         for g in self.c["outbounds"]:
             if g["type"] == "urltest" or g["tag"] == "CLAUDE":
@@ -263,11 +267,13 @@ class ManagementTests(unittest.TestCase):
 
     def test_windows_local_native_provider_inline(self):
         d=m.read_json(m.PRIVATE_FILES[0])
+        for p in d["providers"]:
+            p["url"] = "https://subscriptions.example.org/" + p["tag"]
         claude=next(x for x in d["providers"] if x["tag"]=="Claude-Dedicated")
         claude.clear();claude.update({"type":"local","tag":"Claude-Dedicated","path":"./private/claude-native.json","health_check":{"enabled":False}})
         m.write_json(m.PRIVATE_FILES[0],d)
         m.write_json(m.ROOT/"private/claude-native.json",{"outbounds":[{"type":"trojan","tag":"Claude-Primary","server":"example.com","server_port":443,"password":"secret","tls":{"enabled":True}}]})
-        w=m.windows_profile_config(template=True)
+        w=m.windows_profile_config()
         cp=next(x for x in w["providers"] if x["tag"]=="Claude-Dedicated")
         self.assertEqual(cp["type"],"inline")
         self.assertEqual(cp["outbounds"][0]["tag"],"Claude-Primary")

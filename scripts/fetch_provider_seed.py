@@ -10,9 +10,26 @@ Examples:
 """
 from __future__ import annotations
 import argparse
-import json
 from pathlib import Path
-import urllib.request
+from config_io import ConfigError, read_json, write_bytes
+from downloads import fetch_bytes
+from provider_policy import download_headers
+
+
+def fetch(profile_path, provider_tag, output, proxy=None, timeout=30.0):
+    out = Path(output).expanduser().resolve()
+    if out == profile_path.resolve():
+        raise ConfigError("seed 输出不能覆盖输入 Profile。")
+    profile = read_json(profile_path)
+    provider = next((p for p in profile.get("providers", []) if p.get("tag") == provider_tag), None)
+    if not provider or provider.get("type") != "remote" or not provider.get("url"):
+        raise ConfigError("remote provider with URL not found")
+    headers = download_headers(provider, profile.get("http_clients", []))
+    body = fetch_bytes(provider["url"], headers=headers, proxy=proxy, timeout=timeout)
+    write_bytes(out, body, private=True)
+    print(f"Saved raw seed: {out} ({len(body)} bytes)")
+    print("Keep this file private: it may contain node credentials.")
+    return out
 
 
 def main():
@@ -24,40 +41,11 @@ def main():
     ap.add_argument("--timeout", type=float, default=30.0)
     args = ap.parse_args()
 
-    profile = json.loads(Path(args.profile).read_text(encoding="utf-8-sig"))
-    provider = next((p for p in profile.get("providers", []) if p.get("tag") == args.provider_tag), None)
-    if not provider or provider.get("type") != "remote" or not provider.get("url"):
-        raise SystemExit("remote provider with URL not found")
-
-    ua = provider.get("user_agent")
-    hc = provider.get("http_client")
-    clients = profile.get("http_clients", [])
-    if not ua and isinstance(hc, str):
-        c = next((x for x in clients if x.get("tag") == hc), None)
-        if c:
-            ua = (c.get("headers") or {}).get("User-Agent")
-    ua = ua or "clash.meta"
-
-    handlers = []
-    if args.proxy:
-        handlers.append(urllib.request.ProxyHandler({"http": args.proxy, "https": args.proxy}))
-    else:
-        # Explicitly avoid inheriting a broken/current process proxy when testing direct access.
-        handlers.append(urllib.request.ProxyHandler({}))
-    opener = urllib.request.build_opener(*handlers)
-    req = urllib.request.Request(provider["url"], headers={"User-Agent": ua})
-    with opener.open(req, timeout=args.timeout) as resp:
-        body = resp.read(64 * 1024 * 1024 + 1)
-        if len(body) > 64 * 1024 * 1024:
-            raise SystemExit("subscription body exceeds 64 MiB safety limit")
-        if not body:
-            raise SystemExit("subscription response is empty")
-    out = Path(args.output).expanduser().resolve()
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_bytes(body)
-    print(f"Saved raw seed: {out} ({len(body)} bytes)")
-    print("Keep this file private: it may contain node credentials.")
+    fetch(Path(args.profile).expanduser().resolve(), args.provider_tag, args.output, args.proxy, args.timeout)
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except ConfigError as exc:
+        raise SystemExit(str(exc)) from None

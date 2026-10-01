@@ -11,28 +11,25 @@ Examples:
 from __future__ import annotations
 import argparse
 import hashlib
-import json
 from pathlib import Path
-import shutil
-import urllib.request
-
-
-def as_list(v):
-    return v if isinstance(v, list) else [v]
-
-
-def load(path: Path):
-    return json.loads(path.read_text(encoding="utf-8-sig"))
+import re
+from config_io import ConfigError, read_json as load, save_profile, write_bytes
+from config_model import as_list
+from downloads import fetch_bytes
 
 
 def expand_remote(rule_sets):
+    seen = set()
     for entry in rule_sets:
         if not isinstance(entry, dict) or entry.get("type") != "remote":
             continue
         tags = as_list(entry.get("tag"))
         for tag in tags:
-            if not isinstance(tag, str) or not tag:
-                raise SystemExit("Remote rule-set has invalid tag")
+            if not isinstance(tag, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", tag):
+                raise ConfigError("Remote rule-set tag 不可用作安全的 seed 文件名。")
+            if tag in seen:
+                raise ConfigError("Remote rule-set tag 重复。")
+            seen.add(tag)
             url = entry.get("url", "").replace("{tag}", tag)
             if not url:
                 raise SystemExit(f"Remote rule-set {tag} has no URL")
@@ -59,27 +56,14 @@ def main():
     seed_dir.mkdir(parents=True, exist_ok=True)
 
     if not args.no_download:
-        if args.proxy:
-            handler = urllib.request.ProxyHandler({"http": args.proxy, "https": args.proxy})
-        else:
-            # Explicit direct attempt: don't accidentally point at the failing sing-box profile.
-            handler = urllib.request.ProxyHandler({})
-        opener = urllib.request.build_opener(handler)
-        seen = set()
         for _entry, tag, url in expanded:
-            if tag in seen:
-                continue
-            seen.add(tag)
             out = seed_dir / f"{tag}.srs"
-            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 reF1nd-ruleset-seed/1.0"})
-            print(f"GET {tag}: {url}")
-            with opener.open(req, timeout=args.timeout) as resp:
-                body = resp.read(64 * 1024 * 1024 + 1)
-            if len(body) > 64 * 1024 * 1024:
-                raise SystemExit(f"{tag}: response exceeds 64 MiB")
+            print(f"GET {tag}")
+            body = fetch_bytes(url, headers={"User-Agent": "Mozilla/5.0 reF1nd-ruleset-seed/1.0"},
+                               proxy=args.proxy, timeout=args.timeout)
             if body[:3] != b"SRS":
                 raise SystemExit(f"{tag}: downloaded content is not an SRS binary")
-            out.write_bytes(body)
+            write_bytes(out, body)
             print(f"  -> {out}  sha256={hashlib.sha256(body).hexdigest()}")
 
     # Require every seed before mutating the profile.
@@ -103,12 +87,16 @@ def main():
         else:
             entry["initial_path"] = str(seed_dir / f"{tags[0]}.srs")
 
-    backup = profile.with_suffix(profile.suffix + ".bak-rulesets")
-    shutil.copy2(profile, backup)
-    profile.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    backup = save_profile(profile, data, suffix=".bak-rulesets")
+    if backup is None:
+        print("Rule-set seed settings already applied.")
+        return
     print(f"Patched {len(expanded)} rule-set tag(s) with initial_path.")
     print(f"Backup: {backup}")
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except ConfigError as exc:
+        raise SystemExit(str(exc)) from None

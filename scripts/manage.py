@@ -7,12 +7,10 @@ check/run/export invoke the user's actual sing-box executable.
 from __future__ import annotations
 import argparse
 import concurrent.futures
-import copy
 import hashlib
 import json
 import os
 from pathlib import Path
-import re
 import secrets
 import shutil
 import subprocess
@@ -25,201 +23,40 @@ import urllib.request
 import zipfile
 import io
 
+from config_io import ConfigError, read_json, write_bytes, write_json
+import config_model as model
+from config_model import as_list, expand_rulesets, merge_unique, placeholder, tag_map
+from desktop import pack_windows_profile
+from downloads import fetch_bytes
+from provider_policy import sync_memberships
+from validation import lint as validate_config
+
 ROOT = Path(__file__).resolve().parents[1]
 TARGET = "1.14.2-reF1nd"
 PRIVATE_FILES = [ROOT / "private/providers.json", ROOT / "private/api.json"]
 
-class ConfigError(Exception):
-    pass
+def config_files(profile="mixed", template=False):
+    files = [ROOT / "examples/providers.example.json", ROOT / "examples/api.example.json"] if template else PRIVATE_FILES
+    return model.config_files(ROOT, profile, files)
 
-def read_json(path: Path):
-    try:
-        return json.loads(path.read_text(encoding="utf-8-sig"), object_pairs_hook=unique_keys)
-    except (OSError, ValueError) as exc:
-        # Do not print the file contents; they may contain subscription credentials.
-        raise ConfigError(f"无法读取 JSON：{path.name} ({type(exc).__name__})") from None
 
-def unique_keys(items):
-    result = {}
-    for key, value in items:
-        if key in result:
-            raise ValueError(f"duplicate key: {key}")
-        result[key] = value
-    return result
+def load_config(profile="mixed", template=False):
+    files = [ROOT / "examples/providers.example.json", ROOT / "examples/api.example.json"] if template else PRIVATE_FILES
+    return model.load_config(ROOT, profile, files)
 
-def write_json(path: Path, value, private=False):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".config-", suffix=".tmp")
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            json.dump(value, f, ensure_ascii=False, indent=2)
-            f.write("\n")
-        os.replace(tmp, path)
-        if private:
-            path.chmod(0o600)
-    finally:
-        if os.path.exists(tmp):
-            os.unlink(tmp)
-
-def config_files(profile="mixed"):
-    files = sorted((ROOT / "config").glob("*.json"))
-    files += sorted((ROOT / "profiles" / profile).glob("*.json"))
-    return files + PRIVATE_FILES
-
-def merge_unique(left, right, path=""):
-    """Static inspection only; native sing-box handles production merging."""
-    if isinstance(left, dict) and isinstance(right, dict):
-        result = copy.deepcopy(left)
-        for k, v in right.items():
-            result[k] = merge_unique(result[k], v, f"{path}.{k}") if k in result else copy.deepcopy(v)
-        return result
-    if isinstance(left, list) and isinstance(right, list):
-        return copy.deepcopy(left + right)
-    if left != right:
-        raise ConfigError(f"配置片段包含冲突标量：{path}")
-    return copy.deepcopy(right)
-
-def load_config(profile="mixed"):
-    result = {}
-    for path in config_files(profile):
-        result = merge_unique(result, read_json(path))
-    return result
-
-def as_list(v):
-    return v if isinstance(v, list) else [v]
-
-def expand_rulesets(config):
-    result = []
-    for entry in config["route"]["rule_set"]:
-        for tag in as_list(entry["tag"]):
-            item = copy.deepcopy(entry)
-            item["tag"] = tag
-            for key in ("url", "path", "initial_path"):
-                if key in item:
-                    item[key] = item[key].replace("{tag}", tag)
-            result.append(item)
-    return result
 
 def inside_root(value):
-    path = (ROOT / value).resolve()
-    try:
-        path.relative_to(ROOT)
-    except ValueError:
-        raise ConfigError("配置包脚本仅操作此目录下的文件；请避免外部路径。") from None
-    return path
+    return model.inside_root(ROOT, value)
 
-def tag_map(entries, label):
-    result = {}
-    for entry in entries:
-        tag = entry.get("tag")
-        if not isinstance(tag, str) or not tag or tag in result:
-            raise ConfigError(f"{label} tag 缺失或重复。")
-        result[tag] = entry
-    return result
-
-def placeholder(value):
-    if isinstance(value, str):
-        return "REPLACE_" in value or ".invalid" in value
-    if isinstance(value, list):
-        return any(placeholder(x) for x in value)
-    if isinstance(value, dict):
-        return any(placeholder(x) for x in value.values())
-    return False
-
-def walk(value):
-    if isinstance(value, dict):
-        yield value
-        for x in value.values():
-            yield from walk(x)
-    elif isinstance(value, list):
-        for x in value:
-            yield from walk(x)
 
 def lint(config, template=False, require_seeds=False):
-    outs = tag_map(config["outbounds"], "Outbound")
-    providers = tag_map(config["providers"], "Provider")
-    dns = tag_map(config["dns"]["servers"], "DNS")
-    clients = tag_map(config["http_clients"], "HTTP client")
-    rulesets = tag_map(expand_rulesets(config), "Rule-set")
-    if "Compatible" in outs:
-        raise ConfigError("不要覆盖内核自动注入的 Compatible tag。")
-    if outs.get("REJECT", {}).get("type") != "block":
-        raise ConfigError("REJECT 必须是该 reF1nd 版本支持的 block 出站。")
-    for tag, entry in outs.items():
-        for ref in entry.get("outbounds", []):
-            if ref not in outs:
-                raise ConfigError(f"{tag} 引用了不存在的 Outbound：{ref}")
-        for ref in entry.get("providers", []):
-            if ref not in providers:
-                raise ConfigError(f"{tag} 引用了不存在的 Provider：{ref}")
-        if tag != "CLAUDE" and "Claude-Dedicated" in entry.get("providers", []):
-            raise ConfigError(f"Claude 专用 Provider 不得加入 {tag}。")
-        if entry.get("use_all_providers"):
-            raise ConfigError("本方案禁止 use_all_providers，避免专用节点进入通用池。")
-        if entry.get("type") == "selector" and not (entry.get("providers") and not entry.get("outbounds") and "default" not in entry) and entry.get("default") not in entry.get("outbounds", []):
-            raise ConfigError(f"{tag} 的初始 default 必须是已声明静态出站。")
-        if entry.get("type") == "urltest" and entry.get("outbounds", []) != ["REJECT"]:
-            raise ConfigError(f"{tag} 应保留唯一静态兜底 REJECT，正常节点通过 Provider 注入。")
-    claude = outs.get("CLAUDE", {})
-    if claude.get("providers") != ["Claude-Dedicated"] or claude.get("outbounds") != ["REJECT"]:
-        raise ConfigError("CLAUDE 必须只允许专用 Provider 和 REJECT。")
-    visiting, done = set(), set()
-    def visit(tag):
-        if tag in visiting:
-            raise ConfigError(f"Outbound 存在环：{tag}")
-        if tag in done:
-            return
-        visiting.add(tag)
-        for child in outs[tag].get("outbounds", []):
-            visit(child)
-        visiting.remove(tag)
-        done.add(tag)
-    for tag in outs:
-        visit(tag)
-    for obj in walk(config):
-        if "rule_set" in obj and not isinstance(obj["rule_set"], list) or (
-            isinstance(obj.get("rule_set"), list) and all(isinstance(x, str) for x in obj["rule_set"])):
-            for tag in as_list(obj["rule_set"]):
-                if tag not in rulesets:
-                    raise ConfigError(f"未声明的规则集：{tag}")
-        if "outbound" in obj and isinstance(obj["outbound"], str) and obj["outbound"] not in outs:
-            raise ConfigError("路由引用了不存在的 Outbound。")
-        if "detour" in obj and obj["detour"] not in outs:
-            raise ConfigError("detour 引用了不存在的 Outbound。")
-        if "http_client" in obj and isinstance(obj["http_client"], str) and obj["http_client"] not in clients:
-            raise ConfigError("HTTP client 引用不存在。")
-    for rule in config["dns"]["rules"]:
-        if "server" in rule and rule["server"] not in dns:
-            raise ConfigError("DNS rule server 引用不存在。")
-    if config["dns"]["final"] not in dns or config["route"]["final"] not in outs:
-        raise ConfigError("final 引用不存在。")
-    for rs in rulesets.values():
-        if rs["type"] == "local":
-            local = read_json(inside_root(rs["path"]))
-            if not isinstance(local.get("rules"), list) or local.get("version") != 3:
-                raise ConfigError(f"本地规则集格式错误：{rs['tag']}")
-        elif rs["type"] == "remote" and require_seeds:
-            path = inside_root(rs["initial_path"])
-            if not path.is_file() or path.read_bytes()[:3] != b"SRS":
-                raise ConfigError("缺少公开规则初始缓存；先执行 bootstrap。")
-    if not template:
-        for provider in providers.values():
-            if placeholder(provider):
-                raise ConfigError(f"尚未填写 Provider：{provider['tag']}。请编辑 private/providers.json。")
-            if provider["type"] == "remote":
-                url = urllib.parse.urlsplit(provider.get("url", ""))
-                if url.scheme != "https" or not url.hostname:
-                    raise ConfigError(f"{provider['tag']} 请使用有效的 HTTPS 订阅 URL。")
-            elif provider["type"] == "local":
-                path = inside_root(provider["path"])
-                if not path.is_file() or not path.stat().st_size or placeholder(path.read_text(encoding="utf-8")):
-                    raise ConfigError(f"请填好 {provider['tag']} 的本地订阅文件。")
-            else:
-                raise ConfigError("本管理脚本仅支持 remote/local Provider；其他类型请使用内核原生命令。")
-        secret = config["experimental"]["clash_api"].get("secret", "")
-        if placeholder(secret) or len(secret) < 32:
-            raise ConfigError("API 密钥未初始化或太短；先执行 init。")
-    return {"outbounds": len(outs), "providers": len(providers), "rulesets": len(rulesets)}
+    return validate_config(config, ROOT, template=template, require_seeds=require_seeds)
+
+
+def windows_profile_config(template=False, keep_seed_paths=False):
+    return pack_windows_profile(load_config("tun", template=template), ROOT,
+                                template=template, keep_seed_paths=keep_seed_paths)
+
 
 def initialize():
     for folder in ("private", "state/providers", "state/seeds", "state/ui", "dist", "bin"):
@@ -240,20 +77,11 @@ def initialize():
 def sync_providers():
     """Explicit edit, never invoked automatically by check or run."""
     p = tag_map(read_json(PRIVATE_FILES[0])["providers"], "Provider")
-    if "Claude-Dedicated" not in p:
-        raise ConfigError("必须保留 Claude-Dedicated。")
-    normal = [tag for tag in p if tag != "Claude-Dedicated"]
-    if not normal:
-        raise ConfigError("至少需要一家普通机场。")
     path = ROOT / "config/50-outbounds.json"
     obj = read_json(path)
-    for item in obj["outbounds"]:
-        if item["tag"] == "RULESET-BOOTSTRAP" and any(tag not in normal for tag in item.get("providers", [])):
-            item["providers"] = [normal[0]]
-        if item["tag"] in ["AUTO", "MANUAL", "HK", "TW", "JP", "SG", "US"]:
-            item["providers"] = normal
+    normal = sync_memberships(obj["outbounds"], p)
     write_json(path, obj)
-    print("已同步普通机场白名单：" + ", ".join(normal))
+    print("已同步普通机场白名单：" + ", ".join(normal) + "；MANUAL 同时包含 Claude-Dedicated。")
 
 def bootstrap(config, proxy=None, force=False):
     """Fetch PUBLIC rules only, never subscription URLs. TLS verification stays on."""
@@ -267,27 +95,17 @@ def bootstrap(config, proxy=None, force=False):
             data = path.read_bytes()
             return entry["tag"], hashlib.sha256(data).hexdigest(), "cached"
         for attempt in range(2):
-            tmp = None
             try:
-                handler = urllib.request.ProxyHandler({"http": proxy, "https": proxy}) if proxy else urllib.request.ProxyHandler()
-                opener = urllib.request.build_opener(handler)
-                req = urllib.request.Request(entry["url"], headers={"User-Agent": "ref1nd-config-bootstrap/1.0"})
-                with opener.open(req, timeout=30) as response:
-                    data = response.read(32 * 1024 * 1024 + 1)
-                if len(data) > 32 * 1024 * 1024 or data[:3] != b"SRS":
+                data = fetch_bytes(entry["url"], headers={"User-Agent": "ref1nd-config-bootstrap/1.0"},
+                                   proxy=proxy, limit=32 * 1024 * 1024, inherit_proxy=True)
+                if data[:3] != b"SRS":
                     raise ConfigError("返回内容不是允许大小内的 SRS 文件")
-                fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".download-", suffix=".tmp")
-                with os.fdopen(fd, "wb") as f:
-                    f.write(data)
-                os.replace(tmp, path)
+                write_bytes(path, data)
                 return entry["tag"], hashlib.sha256(data).hexdigest(), "downloaded"
             except (OSError, urllib.error.URLError, ConfigError):
                 if attempt:
                     raise ConfigError(f"公开规则下载失败：{entry['tag']}。请检查网络或 --proxy；旧缓存不会被覆盖。") from None
                 time.sleep(1)
-            finally:
-                if tmp and os.path.exists(tmp):
-                    os.unlink(tmp)
     results, errors = {}, []
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
         futures = [pool.submit(download, x) for x in rs]
@@ -313,14 +131,9 @@ def bootstrap_ui(config, proxy=None, force=False):
         print("cached     MetaCubeXD")
         return
     url = config["experimental"]["clash_api"]["external_ui_download_url"]
-    handler = urllib.request.ProxyHandler({"http": proxy, "https": proxy}) if proxy else urllib.request.ProxyHandler()
-    opener = urllib.request.build_opener(handler)
     temp = Path(tempfile.mkdtemp(prefix=".ui-", dir=ROOT / "state"))
     try:
-        with opener.open(url, timeout=60) as response:
-            data = response.read(64 * 1024 * 1024 + 1)
-        if len(data) > 64 * 1024 * 1024:
-            raise ConfigError("面板归档过大。")
+        data = fetch_bytes(url, proxy=proxy, timeout=60, inherit_proxy=True)
         with zipfile.ZipFile(io.BytesIO(data)) as archive:
             entries = archive.infolist()
             if len(entries) > 10000 or sum(e.file_size for e in entries) > 128 * 1024 * 1024:
@@ -352,104 +165,6 @@ def bootstrap_ui(config, proxy=None, force=False):
         if temp.exists():
             shutil.rmtree(temp)
 
-
-def _inline_local_provider(provider):
-    """Convert a native sing-box JSON local provider to an inline provider for single-file targets."""
-    path = inside_root(provider.get("path", ""))
-    if not path.is_file():
-        raise ConfigError(f"Windows 单文件构建找不到本地 Provider 文件：{provider.get('tag', '(unknown)')}")
-    try:
-        document = read_json(path)
-    except ConfigError:
-        raise ConfigError(
-            f"Windows 单文件构建只能自动内联原生 sing-box JSON 本地 Provider：{provider.get('tag', '(unknown)')}。"
-            "若当前文件是 Clash/YAML 或分享链接，请改用 remote Provider，或先转换为包含 outbounds/endpoints 的 sing-box JSON。"
-        ) from None
-    outbounds = document.get("outbounds", [])
-    endpoints = document.get("endpoints", [])
-    if not isinstance(outbounds, list) or not isinstance(endpoints, list) or (not outbounds and not endpoints):
-        raise ConfigError(
-            f"本地 Provider {provider.get('tag', '(unknown)')} 没有可内联的 outbounds/endpoints。"
-        )
-    inline = {
-        "type": "inline",
-        "tag": provider["tag"],
-        "outbounds": outbounds,
-        "endpoints": endpoints,
-    }
-    if provider.get("health_check"):
-        inline["health_check"] = copy.deepcopy(provider["health_check"])
-    return inline
-
-def windows_profile_config(template=False, keep_seed_paths=False):
-    """Build a self-contained single JSON profile for reF1nd sing-box-for-desktop on Windows."""
-    config = load_config("tun")
-    # Validate source fragments first; template builds may keep Provider/API placeholders.
-    lint(config, template=template)
-    result = copy.deepcopy(config)
-
-    # Desktop profile content is a single JSON document. Inline project-local rule-sets,
-    # and remove CLI-only initial seed paths from remote rule-sets.
-    packed_rule_sets = []
-    for entry in result["route"]["rule_set"]:
-        kind = entry.get("type")
-        if kind == "local":
-            tags = as_list(entry.get("tag"))
-            if len(tags) != 1:
-                raise ConfigError("本地 rule-set 转 inline 时必须只有一个 tag。")
-            source = read_json(inside_root(entry["path"]))
-            if source.get("version") != 3 or not isinstance(source.get("rules"), list):
-                raise ConfigError(f"本地规则集格式错误：{tags[0]}")
-            packed_rule_sets.append({"type": "inline", "tag": tags[0], "rules": copy.deepcopy(source["rules"])})
-        elif kind == "remote":
-            packed = copy.deepcopy(entry)
-            if not keep_seed_paths:
-                packed.pop("initial_path", None)
-            packed.pop("path", None)
-            packed_rule_sets.append(packed)
-        else:
-            packed_rule_sets.append(copy.deepcopy(entry))
-    result["route"]["rule_set"] = packed_rule_sets
-
-    # Remote Provider content is cached by cache.db in the Desktop daemon; keeping the CLI
-    # ./state/providers paths would make the profile depend on an external project directory.
-    packed_providers = []
-    for provider in result["providers"]:
-        if provider.get("type") == "remote":
-            packed = copy.deepcopy(provider)
-            packed.pop("path", None)
-            if not keep_seed_paths:
-                packed.pop("initial_path", None)
-            packed_providers.append(packed)
-        elif provider.get("type") == "local":
-            packed_providers.append(_inline_local_provider(provider))
-        elif provider.get("type") == "inline":
-            packed_providers.append(copy.deepcopy(provider))
-        else:
-            raise ConfigError(f"Windows 单文件构建不支持 Provider 类型：{provider.get('type')}")
-    result["providers"] = packed_providers
-
-    experimental = result.setdefault("experimental", {})
-    cache = experimental.setdefault("cache_file", {"enabled": True})
-    cache.pop("path", None)
-    cache.setdefault("cache_id", "personal-ref1nd-windows")
-
-    # sing-box-for-desktop already supplies its own UI. Keep the local Clash API for optional
-    # external inspection/selector control, but remove the embedded MetaCubeXD file dependency.
-    clash = experimental.get("clash_api")
-    if isinstance(clash, dict):
-        for key in ("external_ui", "external_ui_download_url", "external_ui_http_client", "external_ui_update_interval"):
-            clash.pop(key, None)
-
-    if template and isinstance(clash, dict):
-        clash["secret"] = "REPLACE_WITH_RANDOM_SECRET_RUN_INIT"
-
-    # Add schema only to the packed artifact; source fragments remain merge-friendly.
-    result = {
-        "$schema": "https://raw.githubusercontent.com/reF1nd/sing-box/reF1nd-stable/docs/schema.json",
-        **result,
-    }
-    return result
 
 def write_windows_profile(template=False, output=None, keep_seed_paths=False):
     result = windows_profile_config(template=template, keep_seed_paths=keep_seed_paths)
@@ -519,7 +234,7 @@ def show_groups(config):
     for tag in ["PROXY", "AI", "CLAUDE", "MEDIA", "GAME", "AUTO", "MANUAL", "HK", "TW", "JP", "SG", "US"]:
         group = obj.get(tag, {})
         print(f"{tag}: {group.get('now', '(not loaded)')}")
-        if tag == "CLAUDE":
+        if tag in ("CLAUDE", "MANUAL"):
             for name in group.get("all", []):
                 print("    " + name)
 
@@ -550,6 +265,7 @@ def main():
     parser.add_argument("--core", help="reF1nd sing-box 可执行文件路径")
     parser.add_argument("--output", help="build-windows 的输出路径；默认 dist/windows-profile.json")
     parser.add_argument("--proxy", help="bootstrap 下载公开规则时使用的已有 HTTP 代理")
+    parser.add_argument("--keep-seed-paths", action="store_true", help="build-windows 保留 initial_path")
     parser.add_argument("--force", action="store_true", help="bootstrap 重新下载初始规则；运行时 cache.db 中规则不会因此自动替换")
     args = parser.parse_args()
     if args.action == "init":
@@ -557,8 +273,8 @@ def main():
     if args.action == "sync-providers":
         sync_providers(); return 0
     if args.action == "build-windows":
-        write_windows_profile(template=args.template, output=args.output); return 0
-    config = load_config(args.profile)
+        write_windows_profile(template=args.template, output=args.output, keep_seed_paths=args.keep_seed_paths); return 0
+    config = load_config(args.profile, template=args.template and args.action == "lint")
     if args.action == "bootstrap":
         lint(config, template=True)
         bootstrap(config, args.proxy, args.force); return 0

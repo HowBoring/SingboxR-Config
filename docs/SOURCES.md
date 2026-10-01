@@ -34,7 +34,7 @@ https://github.com/reF1nd/sing-box/blob/7c1ffd271cbc84fed23eaabdcd7e1cefb42a778e
 | `docs/configuration/dns/index.md` | typed DNS、缓存和 reverse_mapping；不使用已弃用 independent_cache |
 | `docs/configuration/index.md` | 原生 JSON、check、format、merge |
 
-这些读取不替代实际二进制执行。39 项合成测试没有执行以上 Go 实现。
+这些读取不替代实际二进制执行。71 项测试没有执行以上 Go 实现。
 
 ## 规则数据
 
@@ -60,7 +60,14 @@ bootstrap 只下载公开规则与上述面板。它不请求 private/providers.
 - `sing-box-for-desktop/src/main/profiles.ts`：Profile 内容保存为单个 `<id>.json`，启动时将完整 `configContent` 交给 daemon；文件导入逻辑当前仅接受 `.bpf`。
 - `sing-box-for-desktop/src/shared/ipc.ts`：Profile 类型包含 `local` / `remote`，Local Profile 创建接口可携带完整 `content`。
 - reF1nd `option/provider.go`：remote Provider 的 `path` 可省略；同时存在 `ProviderInlineOptions`（`outbounds` / `endpoints`）。
-- reF1nd `docs/configuration/rule-set/index.md`：inline rule-set 受支持；remote rule-set `initial_path` 仅用于无缓存时的初始内容，因此 Windows 单文件构建将其移除。
+- reF1nd `docs/configuration/rule-set/index.md`：inline rule-set 受支持；remote rule-set `initial_path` 仅用于无缓存时的初始内容，因此 Windows 单文件构建默认将其移除；--keep-seed-paths 可以保留。
 - reF1nd `docs/configuration/experimental/cache-file.md`：`cache_file.path` 为空时使用默认 `cache.db`。
 
 Windows 构建转换逻辑因此不是把 CLI 目录路径直接带入 Desktop，而是把本地规则 inline、移除项目相对路径，并保持 Provider/策略/路由语义不变。
+
+
+## 2026-10-01 架构审查补充
+
+再次读取上述锁定 commit 的 option/provider.go 与 provider/parser/sing_box.go：inline Provider 只有 outbounds/endpoints/health_check，没有 local Provider 的 override_* 字段；原生订阅解析器过滤 direct/block/dns/selector/urltest/pass 等非节点出站。Windows 转换现在按此处理，并校验转换后的 Profile。
+
+Provider 节点命名与 selector 的 providers 字段也已核对：MANUAL 可以同时引用普通机场与 Claude-Dedicated，候选名仍为 Provider/节点名。文档入口：[Provider](https://sing-boxr.dustinwin.cc.cd/configuration/provider/) 与 [Selector](https://sing-boxr.dustinwin.us.kg/configuration/outbound/selector/)。

@@ -16,21 +16,14 @@ The script:
 """
 from __future__ import annotations
 import copy
-import json
 from pathlib import Path
-import shutil
 import sys
 
+from config_io import ConfigError, read_json as load, save_profile
+from provider_policy import effective_ua, set_user_agent
 
-def load(path: Path):
-    return json.loads(path.read_text(encoding="utf-8-sig"))
 
-
-def main() -> int:
-    if len(sys.argv) != 2:
-        print("Usage: python fix_windows_profile.py <windows-profile.json>", file=sys.stderr)
-        return 2
-    path = Path(sys.argv[1]).expanduser().resolve()
+def patch(path: Path):
     data = load(path)
     providers = data.get("providers")
     clients = data.setdefault("http_clients", [])
@@ -50,8 +43,7 @@ def main() -> int:
             continue
 
         if isinstance(hc, dict):
-            headers = hc.setdefault("headers", {})
-            headers["User-Agent"] = ua
+            set_user_agent(hc, ua)
             provider.pop("user_agent", None)
             hc.pop("detour", None) if hc.get("detour") == "DIRECT" else None
             changed = True
@@ -67,7 +59,7 @@ def main() -> int:
             by_tag[hc] = client
 
         prior = assigned.get(hc)
-        existing = client.get("headers", {}).get("User-Agent") if isinstance(client.get("headers"), dict) else None
+        existing = effective_ua({"http_client": client}, []) if client.get("headers") else None
         effective = prior or existing
         if effective and effective != ua:
             # Preserve per-provider UA by cloning the shared client.
@@ -78,14 +70,14 @@ def main() -> int:
                 new_tag = f"{hc}-{provider.get('tag','provider')}-{i}"
                 i += 1
             base["tag"] = new_tag
-            base.setdefault("headers", {})["User-Agent"] = ua
+            set_user_agent(base, ua)
             if base.get("detour") == "DIRECT":
                 base.pop("detour", None)
             clients.append(base)
             by_tag[new_tag] = base
             provider["http_client"] = new_tag
         else:
-            client.setdefault("headers", {})["User-Agent"] = ua
+            set_user_agent(client, ua)
             if client.get("detour") == "DIRECT":
                 client.pop("detour", None)
             assigned[hc] = ua
@@ -134,13 +126,21 @@ def main() -> int:
         print("No conflicting provider user_agent/http_client settings found.")
         return 0
 
-    backup = path.with_suffix(path.suffix + ".bak")
-    shutil.copy2(path, backup)
-    path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    backup = save_profile(path, data)
     print(f"Fixed: {path}")
     print(f"Backup: {backup}")
     return 0
 
 
+def main() -> int:
+    if len(sys.argv) != 2:
+        print("Usage: python fix_windows_profile.py <windows-profile.json>", file=sys.stderr)
+        return 2
+    return patch(Path(sys.argv[1]).expanduser().resolve())
+
+
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except ConfigError as exc:
+        raise SystemExit(str(exc)) from None
