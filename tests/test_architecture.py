@@ -131,9 +131,15 @@ class PackagingTests(unittest.TestCase):
     def test_clean_clone_template_cli_needs_no_init(self):
         output = self.root / "preview.json"
         command = [sys.executable, str(self.root / "scripts/build.py"), "windows", "--template", "--output", str(output)]
-        subprocess.run(command, check=True, capture_output=True, text=True)
+        subprocess.run(command, check=True, capture_output=True, text=True, encoding="utf-8")
         self.assertFalse((self.root / "private").exists())
         validation.lint(config_io.read_json(output), self.root, template=True)
+
+    def test_template_cli_handles_legacy_redirected_encoding(self):
+        command = [sys.executable, str(self.root / "scripts/build.py"), "windows", "--template"]
+        environment = dict(os.environ, PYTHONUTF8="0", PYTHONIOENCODING="cp1252")
+        result = subprocess.run(command, env=environment, check=True, capture_output=True, encoding="utf-8")
+        self.assertIn("已生成", result.stdout)
 
     def test_empty_local_rules_pack_to_inert_rule(self):
         config_io.write_json(self.root / "rules/local/direct.json", {"version": 3, "rules": []})

@@ -6,7 +6,7 @@
   "claude_source_blob": "f1d250c0f63442d757c4bbba7cd921817ab4adf3",
   "remote_rule_sets": 29,
   "local_rule_sets": 6,
-  "validation": "71 unittest cases passed on Linux/Python 3.12; target core and Windows runtime not executed.",
+  "validation": "72 unittest cases passed on Linux/Python 3.12; target core and Windows runtime not executed.",
   "windows_desktop_target": true,
   "windows_profile": "single JSON, TUN + mixed, local rules inlined",
   "configuration_review_date": "2026-10-01",

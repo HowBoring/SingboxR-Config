@@ -13,7 +13,7 @@ import argparse
 import hashlib
 from pathlib import Path
 import re
-from config_io import ConfigError, read_json as load, save_profile, write_bytes
+from config_io import configure_console, ConfigError, read_json as load, save_profile, write_bytes
 from config_model import as_list
 from downloads import fetch_bytes
 
@@ -37,6 +37,7 @@ def expand_remote(rule_sets):
 
 
 def main():
+    configure_console()
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("profile")
     ap.add_argument("seed_dir")

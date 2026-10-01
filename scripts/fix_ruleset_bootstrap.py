@@ -10,7 +10,7 @@ The selected Provider should already be able to cold-start from cache/initial_pa
 from __future__ import annotations
 import argparse
 from pathlib import Path
-from config_io import ConfigError, read_json as load, save_profile
+from config_io import configure_console, ConfigError, read_json as load, save_profile
 from provider_policy import CLAUDE_PROVIDER
 
 BOOTSTRAP_TAG = "RULESET-BOOTSTRAP"
@@ -101,6 +101,7 @@ def patch(profile: Path, provider_tag: str):
 
 
 def main():
+    configure_console()
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("profile")
     ap.add_argument("provider_tag", help="Provider that is already cold-startable, e.g. YunTu")

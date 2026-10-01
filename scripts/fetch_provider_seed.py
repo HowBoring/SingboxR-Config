@@ -11,7 +11,7 @@ Examples:
 from __future__ import annotations
 import argparse
 from pathlib import Path
-from config_io import ConfigError, read_json, write_bytes
+from config_io import configure_console, ConfigError, read_json, write_bytes
 from downloads import fetch_bytes
 from provider_policy import download_headers
 
@@ -33,6 +33,7 @@ def fetch(profile_path, provider_tag, output, proxy=None, timeout=30.0):
 
 
 def main():
+    configure_console()
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("profile")
     ap.add_argument("provider_tag")

@@ -11,7 +11,7 @@ Usage:
 from __future__ import annotations
 import argparse
 from pathlib import Path
-from config_io import ConfigError, read_json, save_profile
+from config_io import configure_console, ConfigError, read_json, save_profile
 
 
 def patch(profile: Path):
@@ -37,6 +37,7 @@ def patch(profile: Path):
 
 
 def main():
+    configure_console()
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("profile")
     args = ap.parse_args()

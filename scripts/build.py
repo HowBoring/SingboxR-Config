@@ -6,9 +6,11 @@ from pathlib import Path
 import subprocess
 import sys
 
+from config_io import configure_console
 import manage as m
 
 def main():
+    configure_console()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("target", choices=["windows"])
     parser.add_argument("--template", action="store_true", help="允许 Provider/API 占位符，生成可审阅模板")

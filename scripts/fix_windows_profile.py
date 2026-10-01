@@ -19,7 +19,7 @@ import copy
 from pathlib import Path
 import sys
 
-from config_io import ConfigError, read_json as load, save_profile
+from config_io import configure_console, ConfigError, read_json as load, save_profile
 from provider_policy import effective_ua, set_user_agent
 
 
@@ -133,6 +133,7 @@ def patch(path: Path):
 
 
 def main() -> int:
+    configure_console()
     if len(sys.argv) != 2:
         print("Usage: python fix_windows_profile.py <windows-profile.json>", file=sys.stderr)
         return 2

@@ -7,9 +7,13 @@ on:
 permissions:
   contents: read
 
+env:
+  PYTHONUTF8: '1'
+
 jobs:
   static-checks:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest

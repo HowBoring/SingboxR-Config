@@ -23,7 +23,7 @@ import urllib.request
 import zipfile
 import io
 
-from config_io import ConfigError, read_json, write_bytes, write_json
+from config_io import configure_console, ConfigError, read_json, write_bytes, write_json
 import config_model as model
 from config_model import as_list, expand_rulesets, merge_unique, placeholder, tag_map
 from desktop import pack_windows_profile
@@ -256,6 +256,7 @@ def select_group(config, group, target=None, single_claude=False):
     print(f"已选择 {group} → {target}")
 
 def main():
+    configure_console()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=["init", "sync-providers", "lint", "bootstrap", "build-windows", "check", "run", "export", "groups", "select", "select-claude"])
     parser.add_argument("group", nargs="?")

@@ -15,6 +15,7 @@ test_empty_local_rules_pack_to_inert_rule (test_architecture.PackagingTests.test
 test_inline_provider_build_is_ready_and_nodes_not_shared_with_auto (test_architecture.PackagingTests.test_inline_provider_build_is_ready_and_nodes_not_shared_with_auto) ... ok
 test_local_overrides_not_silently_dropped (test_architecture.PackagingTests.test_local_overrides_not_silently_dropped) ... ok
 test_public_template_does_not_read_private_files (test_architecture.PackagingTests.test_public_template_does_not_read_private_files) ... ok
+test_template_cli_handles_legacy_redirected_encoding (test_architecture.PackagingTests.test_template_cli_handles_legacy_redirected_encoding) ... ok
 test_claude_rejects_ordinary_node_even_if_api_reports_it (test_architecture.SelectionTests.test_claude_rejects_ordinary_node_even_if_api_reports_it) ... ok
 test_manual_can_select_dedicated_node (test_architecture.SelectionTests.test_manual_can_select_dedicated_node) ... ok
 test_dedicated_pool_only_in_manual_and_claude (test_architecture.ValidationTests.test_dedicated_pool_only_in_manual_and_claude) ... ok
@@ -71,5 +72,5 @@ test_migration (test_runtime_v5_patch.ProviderBootstrapTests.test_migration) ...
 test_migration (test_runtime_v7_patch.RuleSetBootstrapTests.test_migration) ... ok
 test_migration (test_runtime_v7_tun_stack.TunStackTests.test_migration) ... Patched TUN tun-in: stack 'mixed' -> 'system'
 ----------------------------------------------------------------------
-Ran 71 tests in 0.545s
+Ran 72 tests in 0.611s
 OK

@@ -34,7 +34,7 @@ https://github.com/reF1nd/sing-box/blob/7c1ffd271cbc84fed23eaabdcd7e1cefb42a778e
 | `docs/configuration/dns/index.md` | typed DNS、缓存和 reverse_mapping；不使用已弃用 independent_cache |
 | `docs/configuration/index.md` | 原生 JSON、check、format、merge |
 
-这些读取不替代实际二进制执行。71 项测试没有执行以上 Go 实现。
+这些读取不替代实际二进制执行。72 项测试没有执行以上 Go 实现。
 
 ## 规则数据
 

@@ -4,7 +4,7 @@
 
 目标内核：`1.14.2-reF1nd`。配置版本：`1.3.0`。源码锁定核对日期：2026-09-30；配置审查日期：2026-10-01。
 
-> 交付状态：CLI 多文件配置与 Windows Desktop 单文件构建均已完成；71 项静态/合成测试通过。尚未使用你的目标内核、真实订阅和 Windows TUN 环境做实机验收。填好 Provider 后仍应执行原生 `check`。静态测试通过不等于内核验证通过。
+> 交付状态：CLI 多文件配置与 Windows Desktop 单文件构建均已完成；72 项静态/合成测试通过。尚未使用你的目标内核、真实订阅和 Windows TUN 环境做实机验收。填好 Provider 后仍应执行原生 `check`。静态测试通过不等于内核验证通过。
 
 运行时 v1–v7 修复已整合；新用户无需逐个应用补丁。Provider seed / 规则 seed 冷启动与已有配置迁移见 [运行时修复说明](docs/RUNTIME-FIXES.md)。
 
@@ -360,7 +360,7 @@ Profile 默认 mixed。`check/run/export` 支持 `--core` 或环境变量 `SING_
 
 ## 9. 验证、故障定位和安全
 
-随包提供 71 项测试；本次已执行：
+随包提供 72 项测试；本次已执行：
 
 ```bash
 python scripts/manage.py lint --template

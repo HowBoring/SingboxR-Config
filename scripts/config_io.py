@@ -5,6 +5,14 @@ import json
 import os
 from pathlib import Path
 import tempfile
+import sys
+
+
+def configure_console():
+    """CLI output stays UTF-8 even when Windows redirects stdout to a pipe."""
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="backslashreplace")
 
 
 class ConfigError(Exception):

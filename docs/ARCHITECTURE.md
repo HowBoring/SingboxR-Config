@@ -46,11 +46,12 @@ MANUAL 中选定专用节点只改变 MANUAL 的选择。普通代理流量只�
 | seed 下载未保留内联 HTTP client 的 UA，异常可能输出订阅 URL | 共用请求头解析，保留配置请求头；下载失败不回显 URL；seed 原子写入 |
 | seed 文件名直接使用规则 tag，可能越过 seed 目录 | 限制文件名字符并拒绝重复 tag |
 | 部分迁移测试在 import 时执行，未计入 unittest 用例数量 | 改为正常 unittest 用例；全部进入 discover |
+| Windows 重定向输出使用 cp1252 时中文提示失败，seed 路径未规范化 | CLI 明确输出 UTF-8；CI 使用 Python UTF-8 模式；seed 路径统一 resolve |
 | 文档仍包含旧 UA、bootstrap、节点隔离与测试数量说明 | 更新 README、Windows 说明、验证记录和公开模板 |
 
 ## 验证与后续扩展
 
-已执行 71 项标准 unittest、mixed/tun 模板 lint、Windows 模板生成、语法检查与 git diff 检查。新增 CI 对 Python 3.9/3.13 Linux 和 Python 3.11 Windows 运行相同静态检查，并检查公开模板是否与源码一致；CI 结果以 GitHub Actions 为准。
+已执行 72 项标准 unittest、mixed/tun 模板 lint、Windows 模板生成、语法检查与 git diff 检查。新增 CI 对 Python 3.9/3.13 Linux 和 Python 3.11 Windows 运行相同静态检查，并检查公开模板是否与源码一致；CI 结果以 GitHub Actions 为准。
 
 新增 Provider 时，修改 private/providers.json 并执行 sync-providers。新增可手选组时，在配置中声明明确成员，不使用 use_all_providers。修改专用 Provider 的允许范围时，需要同时更新 provider_policy 和相关测试。新增构建目标时应采用接收配置和根目录的转换函数，并校验输入与成品。
 

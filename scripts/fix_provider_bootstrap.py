@@ -11,7 +11,7 @@ from __future__ import annotations
 import argparse
 import copy
 from pathlib import Path
-from config_io import ConfigError, read_json as load, save_profile
+from config_io import configure_console, ConfigError, read_json as load, save_profile
 from provider_policy import effective_ua, get_client, safe_tag, set_user_agent
 
 
@@ -30,9 +30,7 @@ def patch(profile: Path, provider_tag: str, seed_path: str, detour: str = "PROXY
     if not any(out.get("tag") == detour for out in data.get("outbounds", [])):
         raise ConfigError("Provider refresh detour 引用了不存在的出站。")
 
-    seed = Path(seed_path).expanduser()
-    if not seed.is_absolute():
-        seed = seed.resolve()
+    seed = Path(seed_path).expanduser().resolve()
     if not seed.is_file() or seed.stat().st_size == 0:
         raise SystemExit(f"seed file does not exist or is empty: {seed}")
 
@@ -87,6 +85,7 @@ def patch(profile: Path, provider_tag: str, seed_path: str, detour: str = "PROXY
 
 
 def main():
+    configure_console()
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("profile")
     ap.add_argument("provider_tag")

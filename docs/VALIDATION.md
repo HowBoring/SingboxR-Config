@@ -4,7 +4,7 @@
 
 ## 已执行
 
-- 71 项 Python unittest：全部通过，包含正常发现的 v5/v7 迁移测试；原始用例结果见 [static-tests.txt](static-tests.txt)。
+- 72 项 Python unittest：全部通过，包含正常发现的 v5/v7 迁移测试；原始用例结果见 [static-tests.txt](static-tests.txt)。
 - mixed 与 tun 两种公开 Profile 的静态 lint。
 - 未 init 的临时公开副本生成 Windows 模板；模板在本机 private 配置存在、变化或损坏时均保持一致。
 - Windows 模板重新生成，构建输入与成品均通过静态校验。
