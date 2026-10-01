@@ -1,0 +1,15 @@
+{
+  "providers": [
+    {
+      "type": "remote",
+      "tag": "Airport-C",
+      "url": "https://REPLACE_AIRPORT_C_URL.invalid/subscription",
+      "path": "./state/providers/Airport-C.txt",
+      "update_interval": "24h",
+      "health_check": {
+        "enabled": false
+      },
+      "http_client": "provider-download"
+    }
+  ]
+}

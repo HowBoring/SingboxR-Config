@@ -1,0 +1,15 @@
+{
+  "outbounds": [
+    {
+      "type": "trojan",
+      "tag": "Claude-Primary",
+      "server": "REPLACE_NODE_SERVER",
+      "server_port": 443,
+      "password": "REPLACE_NODE_PASSWORD",
+      "tls": {
+        "enabled": true,
+        "server_name": "REPLACE_TLS_SERVER_NAME"
+      }
+    }
+  ]
+}

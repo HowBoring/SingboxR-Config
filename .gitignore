@@ -1,0 +1,28 @@
+# Private credentials / generated profiles
+/private/*
+!/private/.gitkeep
+/dist/*
+!/dist/.gitkeep
+
+# Runtime state and downloaded providers/rules
+/state/*
+!/state/.gitkeep
+/bin/*
+!/bin/.gitkeep
+
+# Generated package manifests
+/SHA256SUMS.txt
+
+# Python / logs / OS noise
+__pycache__/
+*.pyc
+*.log
+.DS_Store
+Thumbs.db
+
+# Private migration artifacts
+*.seed
+*.bak
+*.bak-*
+cache.db*
+windows-profile.json

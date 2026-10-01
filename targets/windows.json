@@ -1,0 +1,12 @@
+{
+  "target": "reF1nd sing-box-for-desktop / Windows",
+  "source_profile": "tun",
+  "single_file": true,
+  "inline_local_rule_sets": true,
+  "remote_provider_cache": "cache.db",
+  "strip_cli_seed_paths": true,
+  "strip_external_ui_paths": true,
+  "keep_mixed_inbound": true,
+  "keep_clash_api": true,
+  "notes": "Generated artifact contains subscription credentials; keep it private."
+}

@@ -1,0 +1,81 @@
+{
+  "route": {
+    "rule_set": [
+      {
+        "type": "remote",
+        "tag": [
+          "private",
+          "privateip",
+          "ads",
+          "applications",
+          "microsoft-cn",
+          "apple-cn",
+          "google-cn",
+          "bilibili",
+          "games-cn",
+          "games",
+          "netflix",
+          "disney",
+          "max",
+          "primevideo",
+          "appletv",
+          "youtube",
+          "tiktok",
+          "spotify",
+          "media",
+          "netflixip",
+          "mediaip",
+          "ai",
+          "networktest",
+          "telegramip",
+          "proxy",
+          "cn",
+          "cnip",
+          "fakeip-filter",
+          "trackerslist"
+        ],
+        "format": "binary",
+        "url": "https://github.com/DustinWin/ruleset_geodata/releases/download/sing-box-ruleset/{tag}.srs",
+        "initial_path": "./state/seeds/{tag}.srs",
+        "http_client": "ruleset-download",
+        "update_interval": "24h"
+      },
+      {
+        "type": "local",
+        "tag": "local-ai-claude",
+        "format": "source",
+        "path": "./rules/local/ai-claude.json"
+      },
+      {
+        "type": "local",
+        "tag": "local-ai-extra",
+        "format": "source",
+        "path": "./rules/local/ai-extra.json"
+      },
+      {
+        "type": "local",
+        "tag": "local-direct",
+        "format": "source",
+        "path": "./rules/local/direct.json"
+      },
+      {
+        "type": "local",
+        "tag": "local-proxy",
+        "format": "source",
+        "path": "./rules/local/proxy.json"
+      },
+      {
+        "type": "local",
+        "tag": "local-reject",
+        "format": "source",
+        "path": "./rules/local/reject.json"
+      },
+      {
+        "type": "local",
+        "tag": "local-realip",
+        "format": "source",
+        "path": "./rules/local/realip.json"
+      }
+    ]
+  }
+}

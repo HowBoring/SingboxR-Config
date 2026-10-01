@@ -1,0 +1,7 @@
+{
+  "experimental": {
+    "clash_api": {
+      "secret": "REPLACE_WITH_RANDOM_SECRET_RUN_INIT"
+    }
+  }
+}

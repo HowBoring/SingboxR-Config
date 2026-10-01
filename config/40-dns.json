@@ -1,0 +1,380 @@
+{
+  "dns": {
+    "servers": [
+      {
+        "type": "local",
+        "tag": "dns-bootstrap"
+      },
+      {
+        "type": "udp",
+        "tag": "dns-cn",
+        "server": "223.5.5.5",
+        "server_port": 53
+      },
+      {
+        "type": "local",
+        "tag": "dns-local"
+      },
+      {
+        "type": "https",
+        "tag": "dns-proxy",
+        "server": "1.1.1.1",
+        "server_port": 443,
+        "path": "/dns-query",
+        "tls": {
+          "enabled": true,
+          "server_name": "cloudflare-dns.com"
+        },
+        "detour": "PROXY"
+      },
+      {
+        "type": "https",
+        "tag": "dns-ai",
+        "server": "1.1.1.1",
+        "server_port": 443,
+        "path": "/dns-query",
+        "tls": {
+          "enabled": true,
+          "server_name": "cloudflare-dns.com"
+        },
+        "detour": "AI"
+      },
+      {
+        "type": "https",
+        "tag": "dns-claude",
+        "server": "1.1.1.1",
+        "server_port": 443,
+        "path": "/dns-query",
+        "tls": {
+          "enabled": true,
+          "server_name": "cloudflare-dns.com"
+        },
+        "detour": "CLAUDE"
+      },
+      {
+        "type": "https",
+        "tag": "dns-media",
+        "server": "1.1.1.1",
+        "server_port": 443,
+        "path": "/dns-query",
+        "tls": {
+          "enabled": true,
+          "server_name": "cloudflare-dns.com"
+        },
+        "detour": "MEDIA"
+      },
+      {
+        "type": "https",
+        "tag": "dns-game",
+        "server": "1.1.1.1",
+        "server_port": 443,
+        "path": "/dns-query",
+        "tls": {
+          "enabled": true,
+          "server_name": "cloudflare-dns.com"
+        },
+        "detour": "GAME"
+      },
+      {
+        "type": "fakeip",
+        "tag": "dns-fake",
+        "inet4_range": "198.18.0.0/15",
+        "inet6_range": "fc00::/18"
+      }
+    ],
+    "rules": [
+      {
+        "rule_set": "private",
+        "action": "route",
+        "server": "dns-local"
+      },
+      {
+        "rule_set": "local-reject",
+        "action": "reject"
+      },
+      {
+        "rule_set": "local-direct",
+        "action": "route",
+        "server": "dns-cn"
+      },
+      {
+        "type": "logical",
+        "mode": "and",
+        "rules": [
+          {
+            "inbound": [
+              "tun-in"
+            ]
+          },
+          {
+            "query_type": [
+              "A",
+              "AAAA"
+            ]
+          },
+          {
+            "rule_set": [
+              "local-proxy"
+            ]
+          },
+          {
+            "rule_set": [
+              "fakeip-filter",
+              "trackerslist",
+              "local-realip"
+            ],
+            "invert": true
+          }
+        ],
+        "action": "route",
+        "server": "dns-fake"
+      },
+      {
+        "rule_set": "local-proxy",
+        "action": "route",
+        "server": "dns-proxy"
+      },
+      {
+        "type": "logical",
+        "mode": "and",
+        "rules": [
+          {
+            "inbound": [
+              "tun-in"
+            ]
+          },
+          {
+            "query_type": [
+              "A",
+              "AAAA"
+            ]
+          },
+          {
+            "rule_set": [
+              "local-ai-claude",
+              "local-ai-extra",
+              "ai"
+            ]
+          },
+          {
+            "rule_set": [
+              "fakeip-filter",
+              "trackerslist",
+              "local-realip"
+            ],
+            "invert": true
+          }
+        ],
+        "action": "route",
+        "server": "dns-fake"
+      },
+      {
+        "rule_set": "local-ai-claude",
+        "action": "route",
+        "server": "dns-claude"
+      },
+      {
+        "rule_set": [
+          "local-ai-extra",
+          "ai"
+        ],
+        "action": "route",
+        "server": "dns-ai"
+      },
+      {
+        "rule_set": "ads",
+        "action": "reject"
+      },
+      {
+        "rule_set": "games-cn",
+        "action": "route",
+        "server": "dns-cn"
+      },
+      {
+        "type": "logical",
+        "mode": "and",
+        "rules": [
+          {
+            "inbound": [
+              "tun-in"
+            ]
+          },
+          {
+            "query_type": [
+              "A",
+              "AAAA"
+            ]
+          },
+          {
+            "rule_set": [
+              "netflix",
+              "disney",
+              "max",
+              "primevideo",
+              "appletv",
+              "youtube",
+              "tiktok",
+              "spotify",
+              "media"
+            ]
+          },
+          {
+            "rule_set": [
+              "fakeip-filter",
+              "trackerslist",
+              "local-realip"
+            ],
+            "invert": true
+          }
+        ],
+        "action": "route",
+        "server": "dns-fake"
+      },
+      {
+        "rule_set": [
+          "netflix",
+          "disney",
+          "max",
+          "primevideo",
+          "appletv",
+          "youtube",
+          "tiktok",
+          "spotify",
+          "media"
+        ],
+        "action": "route",
+        "server": "dns-media"
+      },
+      {
+        "type": "logical",
+        "mode": "and",
+        "rules": [
+          {
+            "inbound": [
+              "tun-in"
+            ]
+          },
+          {
+            "query_type": [
+              "A",
+              "AAAA"
+            ]
+          },
+          {
+            "rule_set": [
+              "games"
+            ]
+          },
+          {
+            "rule_set": [
+              "fakeip-filter",
+              "trackerslist",
+              "local-realip"
+            ],
+            "invert": true
+          }
+        ],
+        "action": "route",
+        "server": "dns-fake"
+      },
+      {
+        "rule_set": "games",
+        "action": "route",
+        "server": "dns-game"
+      },
+      {
+        "type": "logical",
+        "mode": "and",
+        "rules": [
+          {
+            "inbound": [
+              "tun-in"
+            ]
+          },
+          {
+            "query_type": [
+              "A",
+              "AAAA"
+            ]
+          },
+          {
+            "rule_set": [
+              "networktest"
+            ]
+          },
+          {
+            "rule_set": [
+              "fakeip-filter",
+              "trackerslist",
+              "local-realip"
+            ],
+            "invert": true
+          }
+        ],
+        "action": "route",
+        "server": "dns-fake"
+      },
+      {
+        "rule_set": "networktest",
+        "action": "route",
+        "server": "dns-proxy"
+      },
+      {
+        "rule_set": [
+          "microsoft-cn",
+          "apple-cn",
+          "google-cn",
+          "bilibili"
+        ],
+        "action": "route",
+        "server": "dns-cn"
+      },
+      {
+        "type": "logical",
+        "mode": "and",
+        "rules": [
+          {
+            "inbound": [
+              "tun-in"
+            ]
+          },
+          {
+            "query_type": [
+              "A",
+              "AAAA"
+            ]
+          },
+          {
+            "rule_set": [
+              "proxy"
+            ]
+          },
+          {
+            "rule_set": [
+              "fakeip-filter",
+              "trackerslist",
+              "local-realip"
+            ],
+            "invert": true
+          }
+        ],
+        "action": "route",
+        "server": "dns-fake"
+      },
+      {
+        "rule_set": "proxy",
+        "action": "route",
+        "server": "dns-proxy"
+      },
+      {
+        "rule_set": "cn",
+        "action": "route",
+        "server": "dns-cn"
+      }
+    ],
+    "final": "dns-proxy",
+    "strategy": "prefer_ipv4",
+    "reverse_mapping": true,
+    "cache_capacity": 8192
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "http_clients": [
+    {
+      "tag": "provider-download",
+      "headers": {
+        "User-Agent": "clash.meta"
+      },
+      "domain_resolver": "dns-bootstrap"
+    },
+    {
+      "tag": "ruleset-download",
+      "detour": "RULESET-BOOTSTRAP"
+    }
+  ]
+}

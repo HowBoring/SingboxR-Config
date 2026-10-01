@@ -1,0 +1,199 @@
+{
+  "outbounds": [
+    {
+      "type": "selector",
+      "tag": "RULESET-BOOTSTRAP",
+      "providers": [
+        "Airport-A"
+      ],
+      "interrupt_exist_connections": false
+    },
+    {
+      "type": "selector",
+      "tag": "PROXY",
+      "outbounds": [
+        "AUTO",
+        "MANUAL",
+        "HK",
+        "TW",
+        "JP",
+        "SG",
+        "US"
+      ],
+      "default": "AUTO",
+      "interrupt_exist_connections": false
+    },
+    {
+      "type": "selector",
+      "tag": "AI",
+      "outbounds": [
+        "US",
+        "JP",
+        "SG",
+        "PROXY",
+        "MANUAL"
+      ],
+      "default": "US",
+      "interrupt_exist_connections": false
+    },
+    {
+      "type": "selector",
+      "tag": "CLAUDE",
+      "outbounds": [
+        "REJECT"
+      ],
+      "default": "REJECT",
+      "interrupt_exist_connections": false,
+      "providers": [
+        "Claude-Dedicated"
+      ]
+    },
+    {
+      "type": "selector",
+      "tag": "MEDIA",
+      "outbounds": [
+        "PROXY",
+        "HK",
+        "TW",
+        "JP",
+        "SG",
+        "US",
+        "MANUAL"
+      ],
+      "default": "PROXY",
+      "interrupt_exist_connections": false
+    },
+    {
+      "type": "selector",
+      "tag": "GAME",
+      "outbounds": [
+        "DIRECT",
+        "PROXY",
+        "HK",
+        "TW",
+        "JP",
+        "SG",
+        "US",
+        "MANUAL"
+      ],
+      "default": "DIRECT",
+      "interrupt_exist_connections": false
+    },
+    {
+      "type": "selector",
+      "tag": "MANUAL",
+      "outbounds": [
+        "AUTO"
+      ],
+      "default": "AUTO",
+      "interrupt_exist_connections": false,
+      "providers": [
+        "Airport-A",
+        "Airport-B"
+      ]
+    },
+    {
+      "type": "urltest",
+      "tag": "AUTO",
+      "outbounds": [
+        "REJECT"
+      ],
+      "providers": [
+        "Airport-A",
+        "Airport-B"
+      ],
+      "url": "https://www.gstatic.com/generate_204",
+      "interval": "5m",
+      "tolerance": 100,
+      "interrupt_exist_connections": false
+    },
+    {
+      "type": "urltest",
+      "tag": "HK",
+      "outbounds": [
+        "REJECT"
+      ],
+      "providers": [
+        "Airport-A",
+        "Airport-B"
+      ],
+      "include": "(?i)(🇭🇰|香港|港|(^|[^a-z])HK([^a-z]|$)|Hong[ _-]*Kong)",
+      "url": "https://www.gstatic.com/generate_204",
+      "interval": "5m",
+      "tolerance": 100,
+      "interrupt_exist_connections": false
+    },
+    {
+      "type": "urltest",
+      "tag": "TW",
+      "outbounds": [
+        "REJECT"
+      ],
+      "providers": [
+        "Airport-A",
+        "Airport-B"
+      ],
+      "include": "(?i)(🇹🇼|台湾|臺灣|台|(^|[^a-z])TW([^a-z]|$)|Taiwan)",
+      "url": "https://www.gstatic.com/generate_204",
+      "interval": "5m",
+      "tolerance": 100,
+      "interrupt_exist_connections": false
+    },
+    {
+      "type": "urltest",
+      "tag": "JP",
+      "outbounds": [
+        "REJECT"
+      ],
+      "providers": [
+        "Airport-A",
+        "Airport-B"
+      ],
+      "include": "(?i)(🇯🇵|日本|日|东京|東京|大阪|(^|[^a-z])JP([^a-z]|$)|Japan)",
+      "url": "https://www.gstatic.com/generate_204",
+      "interval": "5m",
+      "tolerance": 100,
+      "interrupt_exist_connections": false
+    },
+    {
+      "type": "urltest",
+      "tag": "SG",
+      "outbounds": [
+        "REJECT"
+      ],
+      "providers": [
+        "Airport-A",
+        "Airport-B"
+      ],
+      "include": "(?i)(🇸🇬|新加坡|狮城|獅城|(^|[^a-z])SG([^a-z]|$)|Singapore)",
+      "url": "https://www.gstatic.com/generate_204",
+      "interval": "5m",
+      "tolerance": 100,
+      "interrupt_exist_connections": false
+    },
+    {
+      "type": "urltest",
+      "tag": "US",
+      "outbounds": [
+        "REJECT"
+      ],
+      "providers": [
+        "Airport-A",
+        "Airport-B"
+      ],
+      "include": "(?i)(🇺🇸|美国|美國|(^|[^a-z])USA?([^a-z]|$)|United[ _-]*States)",
+      "url": "https://www.gstatic.com/generate_204",
+      "interval": "5m",
+      "tolerance": 100,
+      "interrupt_exist_connections": false
+    },
+    {
+      "type": "direct",
+      "tag": "DIRECT"
+    },
+    {
+      "type": "block",
+      "tag": "REJECT"
+    }
+  ]
+}

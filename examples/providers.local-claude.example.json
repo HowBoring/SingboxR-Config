@@ -1,0 +1,34 @@
+{
+  "providers": [
+    {
+      "type": "remote",
+      "tag": "Airport-A",
+      "url": "https://REPLACE_AIRPORT_A_URL.invalid/subscription",
+      "path": "./state/providers/Airport-A.txt",
+      "update_interval": "24h",
+      "health_check": {
+        "enabled": false
+      },
+      "http_client": "provider-download"
+    },
+    {
+      "type": "remote",
+      "tag": "Airport-B",
+      "url": "https://REPLACE_AIRPORT_B_URL.invalid/subscription",
+      "path": "./state/providers/Airport-B.txt",
+      "update_interval": "24h",
+      "health_check": {
+        "enabled": false
+      },
+      "http_client": "provider-download"
+    },
+    {
+      "type": "local",
+      "tag": "Claude-Dedicated",
+      "path": "./private/claude-nodes.txt",
+      "health_check": {
+        "enabled": false
+      }
+    }
+  ]
+}

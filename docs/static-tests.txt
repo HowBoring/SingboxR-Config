@@ -1,0 +1,56 @@
+test_init_idempotent (__main__.ManagementTests.test_init_idempotent) ... ok
+test_native_command_paths (__main__.ManagementTests.test_native_command_paths) ... ok
+test_ready_without_network (__main__.ManagementTests.test_ready_without_network) ... ok
+test_sync_added_provider (__main__.ManagementTests.test_sync_added_provider) ... ok
+test_windows_build_template (__main__.ManagementTests.test_windows_build_template) ... ok
+test_windows_local_native_provider_inline (__main__.ManagementTests.test_windows_local_native_provider_inline) ... ok
+test_ads (__main__.PolicyTests.test_ads) ... ok
+test_ai_before_domestic_vendor (__main__.PolicyTests.test_ai_before_domestic_vendor) ... ok
+test_ai_before_process (__main__.PolicyTests.test_ai_before_process) ... ok
+test_claude_before_ai (__main__.PolicyTests.test_claude_before_ai) ... ok
+test_dns_ai_before_cn (__main__.PolicyTests.test_dns_ai_before_cn) ... ok
+test_explicit_dns_listener (__main__.PolicyTests.test_explicit_dns_listener) ... ok
+test_explicit_override (__main__.PolicyTests.test_explicit_override) ... ok
+test_fakeip_exception_not_direct (__main__.PolicyTests.test_fakeip_exception_not_direct) ... ok
+test_game_cn_before_games (__main__.PolicyTests.test_game_cn_before_games) ... ok
+test_media_aggregation (__main__.PolicyTests.test_media_aggregation) ... ok
+test_mixed_never_fakeip (__main__.PolicyTests.test_mixed_never_fakeip) ... ok
+test_non_address_dns_not_fake (__main__.PolicyTests.test_non_address_dns_not_fake) ... ok
+test_process_not_blanket_direct (__main__.PolicyTests.test_process_not_blanket_direct) ... ok
+test_tun_dns_capture (__main__.PolicyTests.test_tun_dns_capture) ... ok
+test_tun_known_fakeip (__main__.PolicyTests.test_tun_known_fakeip) ... ok
+test_unknown_and_domestic (__main__.PolicyTests.test_unknown_and_domestic) ... ok
+test_unknown_tun_realip (__main__.PolicyTests.test_unknown_tun_realip) ... ok
+test_utilities (__main__.PolicyTests.test_utilities) ... ok
+test_claude_snapshot (__main__.StructureTests.test_claude_snapshot) ... ok
+test_egress_cycle_rejected (__main__.StructureTests.test_egress_cycle_rejected) ... ok
+test_failsafe_outbound (__main__.StructureTests.test_failsafe_outbound) ... ok
+test_loopback_binding (__main__.StructureTests.test_loopback_binding) ... ok
+test_mixed_lint (__main__.StructureTests.test_mixed_lint) ... ok
+test_native_profiles_exclusive (__main__.StructureTests.test_native_profiles_exclusive) ... ok
+test_normal_isolation (__main__.StructureTests.test_normal_isolation) ... ok
+test_placeholders_block_ready (__main__.StructureTests.test_placeholders_block_ready) ... ok
+test_provider_reference_rejected (__main__.StructureTests.test_provider_reference_rejected) ... ok
+test_region_filters (__main__.StructureTests.test_region_filters) ... ok
+test_seeds_not_mixed_with_path (__main__.StructureTests.test_seeds_not_mixed_with_path) ... ok
+test_strict_json (__main__.StructureTests.test_strict_json) ... ok
+test_tun_lint (__main__.StructureTests.test_tun_lint) ... ok
+test_windows_profile_has_no_project_local_paths (__main__.StructureTests.test_windows_profile_has_no_project_local_paths) ... ok
+test_windows_profile_is_single_file_ready (__main__.StructureTests.test_windows_profile_is_single_file_ready) ... ok
+
+----------------------------------------------------------------------
+Ran 39 tests in 0.072s
+
+OK
+初始化完成；已有订阅配置未覆盖。填写 private/providers.json；API 密钥位于 private/api.json。
+初始化完成；已有订阅配置未覆盖。填写 private/providers.json；API 密钥位于 private/api.json。
+初始化完成；已有订阅配置未覆盖。填写 private/providers.json；API 密钥位于 private/api.json。
+初始化完成；已有订阅配置未覆盖。填写 private/providers.json；API 密钥位于 private/api.json。
+初始化完成；已有订阅配置未覆盖。填写 private/providers.json；API 密钥位于 private/api.json。
+初始化完成；已有订阅配置未覆盖。填写 private/providers.json；API 密钥位于 private/api.json。
+初始化完成；已有订阅配置未覆盖。填写 private/providers.json；API 密钥位于 private/api.json。
+初始化完成；已有订阅配置未覆盖。填写 private/providers.json；API 密钥位于 private/api.json。
+已同步普通机场白名单：Airport-A, Airport-B, Airport-C
+初始化完成；已有订阅配置未覆盖。填写 private/providers.json；API 密钥位于 private/api.json。
+已生成 Windows Desktop 单文件 Profile：/tmp/tmphwxcunzl/config/dist/windows-profile.template.json
+初始化完成；已有订阅配置未覆盖。填写 private/providers.json；API 密钥位于 private/api.json。

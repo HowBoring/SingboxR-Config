@@ -1,0 +1,941 @@
+{
+  "$schema": "https://raw.githubusercontent.com/reF1nd/sing-box/reF1nd-stable/docs/schema.json",
+  "log": {
+    "level": "info",
+    "timestamp": true
+  },
+  "http_clients": [
+    {
+      "tag": "provider-download",
+      "headers": {
+        "User-Agent": "clash.meta"
+      },
+      "domain_resolver": "dns-bootstrap"
+    },
+    {
+      "tag": "ruleset-download",
+      "detour": "RULESET-BOOTSTRAP"
+    }
+  ],
+  "dns": {
+    "servers": [
+      {
+        "type": "local",
+        "tag": "dns-bootstrap"
+      },
+      {
+        "type": "udp",
+        "tag": "dns-cn",
+        "server": "223.5.5.5",
+        "server_port": 53
+      },
+      {
+        "type": "local",
+        "tag": "dns-local"
+      },
+      {
+        "type": "https",
+        "tag": "dns-proxy",
+        "server": "1.1.1.1",
+        "server_port": 443,
+        "path": "/dns-query",
+        "tls": {
+          "enabled": true,
+          "server_name": "cloudflare-dns.com"
+        },
+        "detour": "PROXY"
+      },
+      {
+        "type": "https",
+        "tag": "dns-ai",
+        "server": "1.1.1.1",
+        "server_port": 443,
+        "path": "/dns-query",
+        "tls": {
+          "enabled": true,
+          "server_name": "cloudflare-dns.com"
+        },
+        "detour": "AI"
+      },
+      {
+        "type": "https",
+        "tag": "dns-claude",
+        "server": "1.1.1.1",
+        "server_port": 443,
+        "path": "/dns-query",
+        "tls": {
+          "enabled": true,
+          "server_name": "cloudflare-dns.com"
+        },
+        "detour": "CLAUDE"
+      },
+      {
+        "type": "https",
+        "tag": "dns-media",
+        "server": "1.1.1.1",
+        "server_port": 443,
+        "path": "/dns-query",
+        "tls": {
+          "enabled": true,
+          "server_name": "cloudflare-dns.com"
+        },
+        "detour": "MEDIA"
+      },
+      {
+        "type": "https",
+        "tag": "dns-game",
+        "server": "1.1.1.1",
+        "server_port": 443,
+        "path": "/dns-query",
+        "tls": {
+          "enabled": true,
+          "server_name": "cloudflare-dns.com"
+        },
+        "detour": "GAME"
+      },
+      {
+        "type": "fakeip",
+        "tag": "dns-fake",
+        "inet4_range": "198.18.0.0/15",
+        "inet6_range": "fc00::/18"
+      }
+    ],
+    "rules": [
+      {
+        "rule_set": "private",
+        "action": "route",
+        "server": "dns-local"
+      },
+      {
+        "rule_set": "local-reject",
+        "action": "reject"
+      },
+      {
+        "rule_set": "local-direct",
+        "action": "route",
+        "server": "dns-cn"
+      },
+      {
+        "type": "logical",
+        "mode": "and",
+        "rules": [
+          {
+            "inbound": [
+              "tun-in"
+            ]
+          },
+          {
+            "query_type": [
+              "A",
+              "AAAA"
+            ]
+          },
+          {
+            "rule_set": [
+              "local-proxy"
+            ]
+          },
+          {
+            "rule_set": [
+              "fakeip-filter",
+              "trackerslist",
+              "local-realip"
+            ],
+            "invert": true
+          }
+        ],
+        "action": "route",
+        "server": "dns-fake"
+      },
+      {
+        "rule_set": "local-proxy",
+        "action": "route",
+        "server": "dns-proxy"
+      },
+      {
+        "type": "logical",
+        "mode": "and",
+        "rules": [
+          {
+            "inbound": [
+              "tun-in"
+            ]
+          },
+          {
+            "query_type": [
+              "A",
+              "AAAA"
+            ]
+          },
+          {
+            "rule_set": [
+              "local-ai-claude",
+              "local-ai-extra",
+              "ai"
+            ]
+          },
+          {
+            "rule_set": [
+              "fakeip-filter",
+              "trackerslist",
+              "local-realip"
+            ],
+            "invert": true
+          }
+        ],
+        "action": "route",
+        "server": "dns-fake"
+      },
+      {
+        "rule_set": "local-ai-claude",
+        "action": "route",
+        "server": "dns-claude"
+      },
+      {
+        "rule_set": [
+          "local-ai-extra",
+          "ai"
+        ],
+        "action": "route",
+        "server": "dns-ai"
+      },
+      {
+        "rule_set": "ads",
+        "action": "reject"
+      },
+      {
+        "rule_set": "games-cn",
+        "action": "route",
+        "server": "dns-cn"
+      },
+      {
+        "type": "logical",
+        "mode": "and",
+        "rules": [
+          {
+            "inbound": [
+              "tun-in"
+            ]
+          },
+          {
+            "query_type": [
+              "A",
+              "AAAA"
+            ]
+          },
+          {
+            "rule_set": [
+              "netflix",
+              "disney",
+              "max",
+              "primevideo",
+              "appletv",
+              "youtube",
+              "tiktok",
+              "spotify",
+              "media"
+            ]
+          },
+          {
+            "rule_set": [
+              "fakeip-filter",
+              "trackerslist",
+              "local-realip"
+            ],
+            "invert": true
+          }
+        ],
+        "action": "route",
+        "server": "dns-fake"
+      },
+      {
+        "rule_set": [
+          "netflix",
+          "disney",
+          "max",
+          "primevideo",
+          "appletv",
+          "youtube",
+          "tiktok",
+          "spotify",
+          "media"
+        ],
+        "action": "route",
+        "server": "dns-media"
+      },
+      {
+        "type": "logical",
+        "mode": "and",
+        "rules": [
+          {
+            "inbound": [
+              "tun-in"
+            ]
+          },
+          {
+            "query_type": [
+              "A",
+              "AAAA"
+            ]
+          },
+          {
+            "rule_set": [
+              "games"
+            ]
+          },
+          {
+            "rule_set": [
+              "fakeip-filter",
+              "trackerslist",
+              "local-realip"
+            ],
+            "invert": true
+          }
+        ],
+        "action": "route",
+        "server": "dns-fake"
+      },
+      {
+        "rule_set": "games",
+        "action": "route",
+        "server": "dns-game"
+      },
+      {
+        "type": "logical",
+        "mode": "and",
+        "rules": [
+          {
+            "inbound": [
+              "tun-in"
+            ]
+          },
+          {
+            "query_type": [
+              "A",
+              "AAAA"
+            ]
+          },
+          {
+            "rule_set": [
+              "networktest"
+            ]
+          },
+          {
+            "rule_set": [
+              "fakeip-filter",
+              "trackerslist",
+              "local-realip"
+            ],
+            "invert": true
+          }
+        ],
+        "action": "route",
+        "server": "dns-fake"
+      },
+      {
+        "rule_set": "networktest",
+        "action": "route",
+        "server": "dns-proxy"
+      },
+      {
+        "rule_set": [
+          "microsoft-cn",
+          "apple-cn",
+          "google-cn",
+          "bilibili"
+        ],
+        "action": "route",
+        "server": "dns-cn"
+      },
+      {
+        "type": "logical",
+        "mode": "and",
+        "rules": [
+          {
+            "inbound": [
+              "tun-in"
+            ]
+          },
+          {
+            "query_type": [
+              "A",
+              "AAAA"
+            ]
+          },
+          {
+            "rule_set": [
+              "proxy"
+            ]
+          },
+          {
+            "rule_set": [
+              "fakeip-filter",
+              "trackerslist",
+              "local-realip"
+            ],
+            "invert": true
+          }
+        ],
+        "action": "route",
+        "server": "dns-fake"
+      },
+      {
+        "rule_set": "proxy",
+        "action": "route",
+        "server": "dns-proxy"
+      },
+      {
+        "rule_set": "cn",
+        "action": "route",
+        "server": "dns-cn"
+      }
+    ],
+    "final": "dns-proxy",
+    "strategy": "prefer_ipv4",
+    "reverse_mapping": true,
+    "cache_capacity": 8192
+  },
+  "outbounds": [
+    {
+      "type": "selector",
+      "tag": "RULESET-BOOTSTRAP",
+      "providers": [
+        "Airport-A"
+      ],
+      "interrupt_exist_connections": false
+    },
+    {
+      "type": "selector",
+      "tag": "PROXY",
+      "outbounds": [
+        "AUTO",
+        "MANUAL",
+        "HK",
+        "TW",
+        "JP",
+        "SG",
+        "US"
+      ],
+      "default": "AUTO",
+      "interrupt_exist_connections": false
+    },
+    {
+      "type": "selector",
+      "tag": "AI",
+      "outbounds": [
+        "US",
+        "JP",
+        "SG",
+        "PROXY",
+        "MANUAL"
+      ],
+      "default": "US",
+      "interrupt_exist_connections": false
+    },
+    {
+      "type": "selector",
+      "tag": "CLAUDE",
+      "outbounds": [
+        "REJECT"
+      ],
+      "default": "REJECT",
+      "interrupt_exist_connections": false,
+      "providers": [
+        "Claude-Dedicated"
+      ]
+    },
+    {
+      "type": "selector",
+      "tag": "MEDIA",
+      "outbounds": [
+        "PROXY",
+        "HK",
+        "TW",
+        "JP",
+        "SG",
+        "US",
+        "MANUAL"
+      ],
+      "default": "PROXY",
+      "interrupt_exist_connections": false
+    },
+    {
+      "type": "selector",
+      "tag": "GAME",
+      "outbounds": [
+        "DIRECT",
+        "PROXY",
+        "HK",
+        "TW",
+        "JP",
+        "SG",
+        "US",
+        "MANUAL"
+      ],
+      "default": "DIRECT",
+      "interrupt_exist_connections": false
+    },
+    {
+      "type": "selector",
+      "tag": "MANUAL",
+      "outbounds": [
+        "AUTO"
+      ],
+      "default": "AUTO",
+      "interrupt_exist_connections": false,
+      "providers": [
+        "Airport-A",
+        "Airport-B"
+      ]
+    },
+    {
+      "type": "urltest",
+      "tag": "AUTO",
+      "outbounds": [
+        "REJECT"
+      ],
+      "providers": [
+        "Airport-A",
+        "Airport-B"
+      ],
+      "url": "https://www.gstatic.com/generate_204",
+      "interval": "5m",
+      "tolerance": 100,
+      "interrupt_exist_connections": false
+    },
+    {
+      "type": "urltest",
+      "tag": "HK",
+      "outbounds": [
+        "REJECT"
+      ],
+      "providers": [
+        "Airport-A",
+        "Airport-B"
+      ],
+      "include": "(?i)(🇭🇰|香港|港|(^|[^a-z])HK([^a-z]|$)|Hong[ _-]*Kong)",
+      "url": "https://www.gstatic.com/generate_204",
+      "interval": "5m",
+      "tolerance": 100,
+      "interrupt_exist_connections": false
+    },
+    {
+      "type": "urltest",
+      "tag": "TW",
+      "outbounds": [
+        "REJECT"
+      ],
+      "providers": [
+        "Airport-A",
+        "Airport-B"
+      ],
+      "include": "(?i)(🇹🇼|台湾|臺灣|台|(^|[^a-z])TW([^a-z]|$)|Taiwan)",
+      "url": "https://www.gstatic.com/generate_204",
+      "interval": "5m",
+      "tolerance": 100,
+      "interrupt_exist_connections": false
+    },
+    {
+      "type": "urltest",
+      "tag": "JP",
+      "outbounds": [
+        "REJECT"
+      ],
+      "providers": [
+        "Airport-A",
+        "Airport-B"
+      ],
+      "include": "(?i)(🇯🇵|日本|日|东京|東京|大阪|(^|[^a-z])JP([^a-z]|$)|Japan)",
+      "url": "https://www.gstatic.com/generate_204",
+      "interval": "5m",
+      "tolerance": 100,
+      "interrupt_exist_connections": false
+    },
+    {
+      "type": "urltest",
+      "tag": "SG",
+      "outbounds": [
+        "REJECT"
+      ],
+      "providers": [
+        "Airport-A",
+        "Airport-B"
+      ],
+      "include": "(?i)(🇸🇬|新加坡|狮城|獅城|(^|[^a-z])SG([^a-z]|$)|Singapore)",
+      "url": "https://www.gstatic.com/generate_204",
+      "interval": "5m",
+      "tolerance": 100,
+      "interrupt_exist_connections": false
+    },
+    {
+      "type": "urltest",
+      "tag": "US",
+      "outbounds": [
+        "REJECT"
+      ],
+      "providers": [
+        "Airport-A",
+        "Airport-B"
+      ],
+      "include": "(?i)(🇺🇸|美国|美國|(^|[^a-z])USA?([^a-z]|$)|United[ _-]*States)",
+      "url": "https://www.gstatic.com/generate_204",
+      "interval": "5m",
+      "tolerance": 100,
+      "interrupt_exist_connections": false
+    },
+    {
+      "type": "direct",
+      "tag": "DIRECT"
+    },
+    {
+      "type": "block",
+      "tag": "REJECT"
+    }
+  ],
+  "route": {
+    "rule_set": [
+      {
+        "type": "remote",
+        "tag": [
+          "private",
+          "privateip",
+          "ads",
+          "applications",
+          "microsoft-cn",
+          "apple-cn",
+          "google-cn",
+          "bilibili",
+          "games-cn",
+          "games",
+          "netflix",
+          "disney",
+          "max",
+          "primevideo",
+          "appletv",
+          "youtube",
+          "tiktok",
+          "spotify",
+          "media",
+          "netflixip",
+          "mediaip",
+          "ai",
+          "networktest",
+          "telegramip",
+          "proxy",
+          "cn",
+          "cnip",
+          "fakeip-filter",
+          "trackerslist"
+        ],
+        "format": "binary",
+        "url": "https://github.com/DustinWin/ruleset_geodata/releases/download/sing-box-ruleset/{tag}.srs",
+        "http_client": "ruleset-download",
+        "update_interval": "24h"
+      },
+      {
+        "type": "inline",
+        "tag": "local-ai-claude",
+        "rules": [
+          {
+            "domain_suffix": [
+              "anthropic.com",
+              "clau.de",
+              "claude.ai",
+              "claude.com",
+              "claudemcpclient.com",
+              "claudemcpcontent.com",
+              "claudeusercontent.com"
+            ],
+            "domain": [
+              "servd-anthropic-website.b-cdn.net"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "inline",
+        "tag": "local-ai-extra",
+        "rules": [
+          {
+            "domain": [
+              "ref1nd-placeholder-ai-extra.invalid"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "inline",
+        "tag": "local-direct",
+        "rules": [
+          {
+            "domain": [
+              "ref1nd-placeholder-direct.invalid"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "inline",
+        "tag": "local-proxy",
+        "rules": [
+          {
+            "domain": [
+              "ref1nd-placeholder-proxy.invalid"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "inline",
+        "tag": "local-reject",
+        "rules": [
+          {
+            "domain": [
+              "ref1nd-placeholder-reject.invalid"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "inline",
+        "tag": "local-realip",
+        "rules": [
+          {
+            "domain": [
+              "ref1nd-placeholder-realip.invalid"
+            ]
+          }
+        ]
+      }
+    ],
+    "auto_detect_interface": true,
+    "default_domain_resolver": "dns-bootstrap",
+    "default_http_client": "ruleset-download",
+    "final": "PROXY",
+    "rules": [
+      {
+        "inbound": [
+          "dns-in"
+        ],
+        "action": "hijack-dns"
+      },
+      {
+        "inbound": [
+          "tun-in"
+        ],
+        "port": 53,
+        "action": "hijack-dns"
+      },
+      {
+        "action": "sniff"
+      },
+      {
+        "protocol": "dns",
+        "action": "hijack-dns"
+      },
+      {
+        "ip_is_private": true,
+        "action": "route",
+        "outbound": "DIRECT"
+      },
+      {
+        "rule_set": [
+          "private",
+          "privateip"
+        ],
+        "action": "route",
+        "outbound": "DIRECT"
+      },
+      {
+        "rule_set": "local-reject",
+        "action": "reject"
+      },
+      {
+        "rule_set": "local-direct",
+        "action": "route",
+        "outbound": "DIRECT"
+      },
+      {
+        "rule_set": "local-proxy",
+        "action": "route",
+        "outbound": "PROXY"
+      },
+      {
+        "rule_set": "local-ai-claude",
+        "action": "route",
+        "outbound": "CLAUDE"
+      },
+      {
+        "rule_set": [
+          "local-ai-extra",
+          "ai"
+        ],
+        "action": "route",
+        "outbound": "AI"
+      },
+      {
+        "rule_set": "ads",
+        "action": "reject"
+      },
+      {
+        "type": "logical",
+        "mode": "and",
+        "rules": [
+          {
+            "rule_set": "applications"
+          },
+          {
+            "rule_set": [
+              "cn",
+              "games-cn"
+            ]
+          }
+        ],
+        "action": "route",
+        "outbound": "DIRECT"
+      },
+      {
+        "rule_set": "games-cn",
+        "action": "route",
+        "outbound": "DIRECT"
+      },
+      {
+        "rule_set": [
+          "netflix",
+          "disney",
+          "max",
+          "primevideo",
+          "appletv",
+          "youtube",
+          "tiktok",
+          "spotify",
+          "media",
+          "netflixip",
+          "mediaip"
+        ],
+        "action": "route",
+        "outbound": "MEDIA"
+      },
+      {
+        "rule_set": "games",
+        "action": "route",
+        "outbound": "GAME"
+      },
+      {
+        "rule_set": [
+          "networktest",
+          "telegramip"
+        ],
+        "action": "route",
+        "outbound": "PROXY"
+      },
+      {
+        "rule_set": [
+          "microsoft-cn",
+          "apple-cn",
+          "google-cn",
+          "bilibili"
+        ],
+        "action": "route",
+        "outbound": "DIRECT"
+      },
+      {
+        "rule_set": "proxy",
+        "action": "route",
+        "outbound": "PROXY"
+      },
+      {
+        "rule_set": "cn",
+        "action": "route",
+        "outbound": "DIRECT"
+      },
+      {
+        "action": "resolve"
+      },
+      {
+        "ip_is_private": true,
+        "action": "route",
+        "outbound": "DIRECT"
+      },
+      {
+        "rule_set": "cnip",
+        "action": "route",
+        "outbound": "DIRECT"
+      }
+    ]
+  },
+  "experimental": {
+    "cache_file": {
+      "enabled": true,
+      "store_fakeip": true,
+      "cache_id": "personal-ref1nd-windows"
+    },
+    "clash_api": {
+      "external_controller": "127.0.0.1:9090",
+      "default_mode": "Rule",
+      "access_control_allow_origin": [
+        "http://127.0.0.1:9090",
+        "http://localhost:9090"
+      ],
+      "secret": "REPLACE_WITH_RANDOM_SECRET_RUN_INIT"
+    }
+  },
+  "inbounds": [
+    {
+      "type": "mixed",
+      "tag": "mixed-in",
+      "listen": "127.0.0.1",
+      "listen_port": 7890
+    },
+    {
+      "type": "direct",
+      "tag": "dns-in",
+      "listen": "127.0.0.1",
+      "listen_port": 1053
+    },
+    {
+      "type": "tun",
+      "tag": "tun-in",
+      "address": [
+        "172.19.0.1/30",
+        "fdfe:dcba:9876::1/126"
+      ],
+      "mtu": 1500,
+      "auto_route": true,
+      "strict_route": true,
+      "stack": "system"
+    }
+  ],
+  "providers": [
+    {
+      "type": "remote",
+      "tag": "Airport-A",
+      "url": "https://REPLACE_AIRPORT_A_URL.invalid/subscription",
+      "update_interval": "24h",
+      "health_check": {
+        "enabled": false
+      },
+      "http_client": "provider-download"
+    },
+    {
+      "type": "remote",
+      "tag": "Airport-B",
+      "url": "https://REPLACE_AIRPORT_B_URL.invalid/subscription",
+      "update_interval": "24h",
+      "health_check": {
+        "enabled": false
+      },
+      "http_client": "provider-download"
+    },
+    {
+      "type": "remote",
+      "tag": "Claude-Dedicated",
+      "url": "https://REPLACE_CLAUDE_SUBSCRIPTION_URL.invalid/subscription",
+      "update_interval": "24h",
+      "health_check": {
+        "enabled": false
+      },
+      "http_client": "provider-download"
+    }
+  ]
+}

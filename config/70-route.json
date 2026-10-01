@@ -1,0 +1,159 @@
+{
+  "route": {
+    "auto_detect_interface": true,
+    "default_domain_resolver": "dns-bootstrap",
+    "default_http_client": "ruleset-download",
+    "final": "PROXY",
+    "rules": [
+      {
+        "inbound": [
+          "dns-in"
+        ],
+        "action": "hijack-dns"
+      },
+      {
+        "inbound": [
+          "tun-in"
+        ],
+        "port": 53,
+        "action": "hijack-dns"
+      },
+      {
+        "action": "sniff"
+      },
+      {
+        "protocol": "dns",
+        "action": "hijack-dns"
+      },
+      {
+        "ip_is_private": true,
+        "action": "route",
+        "outbound": "DIRECT"
+      },
+      {
+        "rule_set": [
+          "private",
+          "privateip"
+        ],
+        "action": "route",
+        "outbound": "DIRECT"
+      },
+      {
+        "rule_set": "local-reject",
+        "action": "reject"
+      },
+      {
+        "rule_set": "local-direct",
+        "action": "route",
+        "outbound": "DIRECT"
+      },
+      {
+        "rule_set": "local-proxy",
+        "action": "route",
+        "outbound": "PROXY"
+      },
+      {
+        "rule_set": "local-ai-claude",
+        "action": "route",
+        "outbound": "CLAUDE"
+      },
+      {
+        "rule_set": [
+          "local-ai-extra",
+          "ai"
+        ],
+        "action": "route",
+        "outbound": "AI"
+      },
+      {
+        "rule_set": "ads",
+        "action": "reject"
+      },
+      {
+        "type": "logical",
+        "mode": "and",
+        "rules": [
+          {
+            "rule_set": "applications"
+          },
+          {
+            "rule_set": [
+              "cn",
+              "games-cn"
+            ]
+          }
+        ],
+        "action": "route",
+        "outbound": "DIRECT"
+      },
+      {
+        "rule_set": "games-cn",
+        "action": "route",
+        "outbound": "DIRECT"
+      },
+      {
+        "rule_set": [
+          "netflix",
+          "disney",
+          "max",
+          "primevideo",
+          "appletv",
+          "youtube",
+          "tiktok",
+          "spotify",
+          "media",
+          "netflixip",
+          "mediaip"
+        ],
+        "action": "route",
+        "outbound": "MEDIA"
+      },
+      {
+        "rule_set": "games",
+        "action": "route",
+        "outbound": "GAME"
+      },
+      {
+        "rule_set": [
+          "networktest",
+          "telegramip"
+        ],
+        "action": "route",
+        "outbound": "PROXY"
+      },
+      {
+        "rule_set": [
+          "microsoft-cn",
+          "apple-cn",
+          "google-cn",
+          "bilibili"
+        ],
+        "action": "route",
+        "outbound": "DIRECT"
+      },
+      {
+        "rule_set": "proxy",
+        "action": "route",
+        "outbound": "PROXY"
+      },
+      {
+        "rule_set": "cn",
+        "action": "route",
+        "outbound": "DIRECT"
+      },
+      {
+        "action": "resolve"
+      },
+      {
+        "ip_is_private": true,
+        "action": "route",
+        "outbound": "DIRECT"
+      },
+      {
+        "rule_set": "cnip",
+        "action": "route",
+        "outbound": "DIRECT"
+      }
+    ]
+  }
+}
