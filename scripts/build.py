@@ -6,9 +6,11 @@ from pathlib import Path
 import subprocess
 import sys
 
+from config_io import configure_console
 import manage as m
 
 def main():
+    configure_console()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("target", choices=["windows"])
     parser.add_argument("--template", action="store_true", help="允许 Provider/API 占位符，生成可审阅模板")
@@ -17,11 +19,11 @@ def main():
     parser.add_argument("--core", help="reF1nd sing-box 可执行文件路径")
     parser.add_argument("--keep-seed-paths", action="store_true", help="保留 initial_path；导入 Windows 前必须改成目标机器可访问的路径")
     args = parser.parse_args()
+    if args.check and args.template:
+        raise m.ConfigError("含占位符的模板不能执行原生 check；请先填写 Provider 并 init。")
     if args.target == "windows":
         output = m.write_windows_profile(template=args.template, output=args.output, keep_seed_paths=args.keep_seed_paths)
         if args.check:
-            if args.template:
-                raise m.ConfigError("含占位符的模板不能执行原生 check；请先填写 Provider 并 init。")
             exe = m.core_path(args.core)
             return subprocess.call([exe, "check", "-c", str(output)], cwd=m.ROOT)
     return 0

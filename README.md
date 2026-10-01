@@ -1,10 +1,10 @@
-# reF1nd sing-box 多 Provider 配置 · V1.2
+# reF1nd sing-box 多 Provider 配置 · V1.3
 
 **多机场订阅 / Claude 专用出口 / DustinWin 折中分组方案 / Windows Desktop 单文件构建**
 
-目标内核：`1.14.2-reF1nd`。配置版本：`1.2.0`。源码核对日期：2026-09-30。
+目标内核：`1.14.2-reF1nd`。配置版本：`1.3.0`。源码锁定核对日期：2026-09-30；配置审查日期：2026-10-01。
 
-> 交付状态：CLI 多文件配置与 Windows Desktop 单文件构建均已完成；39 项静态/合成测试通过。尚未使用你的目标内核、真实订阅和 Windows TUN 环境做实机验收。填好 Provider 后仍应执行原生 `check`。静态测试通过不等于内核验证通过。
+> 交付状态：CLI 多文件配置与 Windows Desktop 单文件构建均已完成；72 项静态/合成测试通过。尚未使用你的目标内核、真实订阅和 Windows TUN 环境做实机验收。填好 Provider 后仍应执行原生 `check`。静态测试通过不等于内核验证通过。
 
 运行时 v1–v7 修复已整合；新用户无需逐个应用补丁。Provider seed / 规则 seed 冷启动与已有配置迁移见 [运行时修复说明](docs/RUNTIME-FIXES.md)。
 
@@ -60,6 +60,8 @@ py -3 scripts/build.py windows --check --core .\bin\sing-box.exe
 py -3 scripts/build.py windows --template
 ```
 
+`--template` 使用 examples 中的 Provider/API 占位配置，不读取 private，未 init 的公开仓库也可生成模板。实际构建不加此参数。
+
 仓库已附带同样逻辑生成的 [`examples/windows-profile.template.json`](examples/windows-profile.template.json)。
 
 ### 在 Windows Desktop 中导入
@@ -86,7 +88,7 @@ python scripts/manage.py init
 |---|---|---|
 | `Airport-A` | 第一家机场的完整 HTTPS 订阅 URL | 普通节点池和地区组 |
 | `Airport-B` | 第二家机场的完整 HTTPS 订阅 URL | 普通节点池和地区组 |
-| `Claude-Dedicated` | 只包含 Claude 专用节点的 HTTPS 订阅 URL | 只供 `CLAUDE` 使用 |
+| `Claude-Dedicated` | 只包含 Claude 专用节点的 HTTPS 订阅 URL | `CLAUDE` 专用出口与 `MANUAL` 手动选择 |
 
 直接替换整个占位 URL，不要保留 `.invalid/subscription` 后缀。URL 中的 token 属于凭据，不需要发给任何人。当前机场数量只是预留值，增减方法见第 3 节。
 
@@ -121,6 +123,14 @@ python scripts/manage.py select-claude
 ```bash
 python scripts/manage.py select CLAUDE "Claude-Dedicated/你的专用节点名称"
 ```
+
+`MANUAL` 中也可以直接选择专用节点：
+
+```bash
+python scripts/manage.py select MANUAL "Claude-Dedicated/你的专用节点名称"
+```
+
+若希望普通代理流量使用此选择，再执行 `python scripts/manage.py select PROXY MANUAL`。`CLAUDE` 的选择独立保存；在 MANUAL 选点不会修改它。`groups` 会列出 MANUAL 与 CLAUDE 的全部候选。
 
 首次启动时 `CLAUDE → REJECT` 是刻意设计，不是节点失效。选好后通过内核缓存保存；节点消失后回到拒绝兜底，而不是普通机场或直连。完整原因见第 6 节。
 
@@ -159,11 +169,11 @@ python scripts/manage.py sync-providers
 python scripts/manage.py lint
 ```
 
-`sync-providers` 只把除 `Claude-Dedicated` 以外的 Provider 同步到 `AUTO / MANUAL / HK / TW / JP / SG / US`，不会把专用节点加入普通池。它会重写这些组的 Provider 白名单，不修改其他路由。至少保留一家普通机场。删除机场后必须同步，否则仍会有悬空引用。
+`sync-providers` 将普通机场同步到 `AUTO / HK / TW / JP / SG / US`；`MANUAL` 包含全部普通机场和 `Claude-Dedicated`，可直接手选专用节点。`CLAUDE` 仍只引用专用 Provider。规则下载组保留已选普通机场；该机场被删除或列表为空时改用第一家普通机场。至少保留一家普通机场，增删后均需同步。
 
-如果机场订阅混入“官网、剩余流量、到期时间”假节点，可在该 Provider 上添加适合其命名的 `exclude` 正则。不要盲目复制过宽的排除条件。默认 User-Agent 为 `clash.meta`，机场要求其他 UA 时修改对应 `user_agent`。
+如果机场订阅混入“官网、剩余流量、到期时间”假节点，可在该 Provider 上添加适合其命名的 `exclude` 正则。不要盲目复制过宽的排除条件。默认 User-Agent 为 `clash.meta`。机场要求其他 UA 时，为它创建独立 HTTP client，在 `headers.User-Agent` 中设置值，再修改 Provider 的 `http_client` 引用；不要同时设置 Provider.user_agent 和 http_client。
 
-远程 Provider 下载默认走 `provider-download → DIRECT`，避免“先有订阅节点才能下载同一份订阅”的循环。订阅域名无法直连时，先用已有可信代理获取订阅内容，再使用 local Provider；不要直接让空订阅通过自己下载自己。协议和订阅格式由目标内核解析，本脚本不做在线第三方订阅转换。
+远程 Provider 下载默认使用无 detour 的 `provider-download` 直接拨号，域名解析显式使用系统 `dns-bootstrap`，避免“先有订阅节点才能下载同一份订阅”的循环。订阅域名无法直连时，先用已有可信代理获取 seed，为 remote Provider 配置 initial_path；步骤见 [运行时修复说明](docs/RUNTIME-FIXES.md)。也可使用 local Provider。不要直接让空订阅通过自己下载自己。协议和订阅格式由目标内核解析，本脚本不做在线第三方订阅转换。
 
 ### Claude 只有单节点链接或原生节点配置
 
@@ -204,11 +214,12 @@ local 文件不在 `config/` 内，避免被当成主配置再次合并。远程
 
 ## 4. 策略与规则
 
-源配置包含 **29 个 DustinWin 远程规则集 + 6 个本地规则集**；Windows 构建会把这 6 个本地规则集转换为 inline；共 **14 个出站对象**，其中 12 个选择/测速组和 `DIRECT / REJECT` 两个基础出站。
+源配置包含 **29 个 DustinWin 远程规则集 + 6 个本地规则集**；Windows 构建会把这 6 个本地规则集转换为 inline；共 **15 个出站对象**，其中 13 个选择/测速组和 `DIRECT / REJECT` 两个基础出站。
 
 | 业务组 | 默认选择 | 说明 |
 |---|---|---|
 | `PROXY` | `AUTO` | 通用代理和未匹配流量 |
+| `MANUAL` | `AUTO` | 可手选普通机场或 Claude-Dedicated 节点 |
 | `AI` | `US` | 非 Claude 的 AI；可改 JP / SG / PROXY / MANUAL |
 | `CLAUDE` | `REJECT`，首次手选专用节点 | 不包含普通机场、不自动切普通出口 |
 | `MEDIA` | `PROXY` | 各媒体细规则统一进入这个组 |
@@ -237,7 +248,7 @@ local 文件不在 `config/` 内，避免被当成主配置再次合并。远程
 
 ## 5. DNS 与可选 TUN
 
-默认沿用已确认的“国内直连、其他代理”策略，与当前设备地理位置无关。DNS-bootstrap / DNS-cn 默认 `223.5.5.5`，海外 DoH 默认 `1.1.1.1` 并经对应的 PROXY / AI / CLAUDE / MEDIA / GAME 出站访问。可在 `config/40-dns.json` 修改。
+默认沿用已确认的“国内直连、其他代理”策略，与当前设备地理位置无关。DNS-bootstrap 使用系统 local resolver，DNS-cn 默认 `223.5.5.5`，海外 DoH 默认 `1.1.1.1` 并经对应的 PROXY / AI / CLAUDE / MEDIA / GAME 出站访问。可在 `config/40-dns.json` 修改。
 
 **mixed 模式不向应用返回 FakeIP。** TUN 模式只对从 `tun-in` 接收、命中已知海外分类、且不在 FakeIP 例外列表中的 A / AAAA 查询使用 FakeIP。内部解析和 1053 调试入口不通过该入口匹配条件生成 FakeIP。未知域名获取真实 IP，再让 route 中的 CN IP 规则判断是否直连。
 
@@ -262,7 +273,7 @@ python scripts/manage.py run --profile tun
 
 这不是对任意未来版本的保证：源码、原生 `check` 和空组行为都需要随升级重新验证。管理脚本因此检查目标版本。此方案防的是配置内的隐式兜底；应用不使用本代理、用户添加更早的显式直连覆盖、第三方网关域名不在规则内等情况不属于这一保证。
 
-`CLAUDE` 只允许专用 Provider，并不意味着订阅内容本身可信。只放你确认用于 Claude 的节点，不要把包含大量普通节点的整个机场塞进该 Provider。专用节点失效时不自动尝试另一家普通机场。
+`CLAUDE` 只允许专用 Provider，`MANUAL` 也允许明确手选其节点；专用节点不进入 AUTO、地区测速组或规则下载组。订阅内容本身仍需由你确认可信。只放你确认用于 Claude 的节点，不要把包含大量普通节点的整个机场塞进该 Provider。专用节点失效时不自动尝试另一家普通机场。
 
 ## 7. 本地规则与 AI 扩展
 
@@ -306,6 +317,12 @@ examples/                可公开的 Provider/密钥示例
 rules/local/             可维护的本地 source 规则
 scripts/manage.py        初始化、公开资源下载、校验、启动、面板选择、Windows 构建
 scripts/build.py         可分发 target 构建入口（当前含 windows）
+scripts/config_model.py  配置读取、合并与规则集展开
+scripts/validation.py    引用、策略与运行时兼容性检查
+scripts/desktop.py       Windows 单文件转换
+scripts/provider_policy.py Provider 白名单与 HTTP 请求头
+scripts/config_io.py     严格 JSON、原子写入与迁移备份
+scripts/downloads.py     有界 HTTPS 下载与错误脱敏
 targets/windows.json     Windows target 的转换约定说明
 state/seeds/             首次启动的 SRS 文件
 state/providers/         内核订阅缓存；可能含节点密码
@@ -318,11 +335,11 @@ dist/                    合并导出结果；包含敏感信息
 | 命令 | 行为 |
 |---|---|
 | `init` | 创建必要目录、生成本机密钥；不覆盖已有订阅 |
-| `sync-providers` | 将普通机场同步到七个节点组白名单 |
-| `lint --template` | 允许占位符的项目静态检查，不能据此运行 |
+| `sync-providers` | 同步普通机场；MANUAL 额外包含专用 Provider；修复规则下载组悬空引用 |
+| `lint --template` | 使用公开示例检查项目配置，不读取 private，不能据此运行 |
 | `lint` | 项目静态检查，同时确认订阅和密钥已填写 |
 | `bootstrap [--proxy ...]` | 下载公开 SRS 和面板，不请求机场订阅 |
-| `build-windows [--template]` | 生成 Windows Desktop 单文件 Profile |
+| `build-windows [--template] [--keep-seed-paths]` | 生成 Windows Desktop 单文件 Profile |
 | `scripts/build.py windows` | 与上项相同的 target-oriented 构建入口，可配 `--check` |
 | `check [--profile ...]` | 调用目标内核 `sing-box check` |
 | `run [--profile ...]` | 先 check，再前台运行 |
@@ -337,11 +354,13 @@ Profile 默认 mixed。`check/run/export` 支持 `--core` 或环境变量 `SING_
 
 `export` 生成的是 CLI 合并主配置，**不是完全自包含的单文件**；本地规则、缓存种子等仍按 `-D` 指向包根目录访问。Windows Desktop 请使用 `build-windows` / `scripts/build.py windows`，后者会内联本地规则并去除项目路径依赖。两者都不会把动态 Provider 内的节点固化成静态出站。
 
-所有 JSON 是标准 JSON，无注释、无尾逗号。`private/` 只显式加载两个主配置文件，单节点文件不会被误合并。不需要把 JSON 手工拼接，也不依赖额外模板引擎；生产配置合并由内核原生命令执行，Python 内部合并只用于静态检查。
+所有 JSON 是标准 JSON，无注释、无尾逗号。`private/` 只显式加载两个主配置文件，单节点文件不会被误合并。不需要把 JSON 手工拼接，也不依赖额外模板引擎；生产配置合并由内核原生命令执行，Python 内部合并用于静态检查与 Windows 单文件构建；CLI 的生产配置合并由内核处理。
+
+模块职责、整体检查结果和扩展约定见 [架构说明](docs/ARCHITECTURE.md)。
 
 ## 9. 验证、故障定位和安全
 
-随包提供 39 项测试；本次已执行：
+随包提供 72 项测试；本次已执行：
 
 ```bash
 python scripts/manage.py lint --template

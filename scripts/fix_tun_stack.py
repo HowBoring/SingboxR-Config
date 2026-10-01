@@ -10,17 +10,12 @@ Usage:
 """
 from __future__ import annotations
 import argparse
-import json
 from pathlib import Path
-import shutil
+from config_io import configure_console, ConfigError, read_json, save_profile
 
 
-def main():
-    ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("profile")
-    args = ap.parse_args()
-    profile = Path(args.profile).expanduser().resolve()
-    data = json.loads(profile.read_text(encoding="utf-8-sig"))
+def patch(profile: Path):
+    data = read_json(profile)
 
     changed = []
     for inbound in data.get("inbounds", []):
@@ -32,13 +27,25 @@ def main():
     if not changed:
         raise SystemExit("No TUN inbound found")
 
-    backup = profile.with_suffix(profile.suffix + ".bak-tun-stack")
-    shutil.copy2(profile, backup)
-    profile.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    backup = save_profile(profile, data, suffix=".bak-tun-stack")
+    if backup is None:
+        print("TUN system stack already applied.")
+        return
     for tag, old in changed:
         print(f"Patched TUN {tag}: stack {old!r} -> 'system'")
     print(f"Backup: {backup}")
 
 
+def main():
+    configure_console()
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("profile")
+    args = ap.parse_args()
+    patch(Path(args.profile).expanduser().resolve())
+
+
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except ConfigError as exc:
+        raise SystemExit(str(exc)) from None

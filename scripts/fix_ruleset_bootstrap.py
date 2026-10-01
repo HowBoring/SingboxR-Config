@@ -9,16 +9,12 @@ The selected Provider should already be able to cold-start from cache/initial_pa
 """
 from __future__ import annotations
 import argparse
-import json
 from pathlib import Path
-import shutil
+from config_io import configure_console, ConfigError, read_json as load, save_profile
+from provider_policy import CLAUDE_PROVIDER
 
 BOOTSTRAP_TAG = "RULESET-BOOTSTRAP"
 RULESET_CLIENT = "ruleset-download"
-
-
-def load(path: Path):
-    return json.loads(path.read_text(encoding="utf-8-sig"))
 
 
 def find_tag(items, tag):
@@ -36,6 +32,8 @@ def patch(profile: Path, provider_tag: str):
     provider = find_tag(providers, provider_tag)
     if provider is None:
         raise SystemExit(f"Provider not found: {provider_tag}")
+    if provider_tag == CLAUDE_PROVIDER:
+        raise ConfigError("规则下载组不使用 Claude 专用 Provider；请选择普通机场。")
     if provider.get("type") not in ("remote", "local", "inline"):
         raise SystemExit(f"Unsupported Provider type for bootstrap: {provider.get('type')}")
 
@@ -93,15 +91,17 @@ def patch(profile: Path, provider_tag: str):
     if changed == 0:
         raise SystemExit("No remote rule-sets found in route.rule_set")
 
-    backup = profile.with_suffix(profile.suffix + ".bak")
-    shutil.copy2(profile, backup)
-    profile.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    backup = save_profile(profile, data)
+    if backup is None:
+        print("Rule-set bootstrap settings already applied.")
+        return
     print(f"Patched {changed} remote rule-set definition(s).")
     print(f"Rule-set cold-start path: {RULESET_CLIENT} -> {BOOTSTRAP_TAG} -> {provider_tag}/*")
     print(f"Backup: {backup}")
 
 
 def main():
+    configure_console()
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("profile")
     ap.add_argument("provider_tag", help="Provider that is already cold-startable, e.g. YunTu")
@@ -110,4 +110,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except ConfigError as exc:
+        raise SystemExit(str(exc)) from None

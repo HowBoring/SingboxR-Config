@@ -10,42 +10,9 @@ The seed should be the RAW subscription response downloaded from the Provider UR
 from __future__ import annotations
 import argparse
 import copy
-import json
 from pathlib import Path
-import re
-import shutil
-import sys
-
-
-def load(path: Path):
-    return json.loads(path.read_text(encoding="utf-8-sig"))
-
-
-def safe_tag(tag: str) -> str:
-    s = re.sub(r"[^A-Za-z0-9_.-]+", "-", tag).strip("-")
-    return s or "provider"
-
-
-def get_client(clients, tag):
-    for c in clients:
-        if isinstance(c, dict) and c.get("tag") == tag:
-            return c
-    return None
-
-
-def effective_ua(provider, clients):
-    if provider.get("user_agent"):
-        return provider["user_agent"]
-    hc = provider.get("http_client")
-    if isinstance(hc, dict):
-        headers = hc.get("headers") or {}
-        return headers.get("User-Agent") or headers.get("user-agent") or "clash.meta"
-    if isinstance(hc, str):
-        c = get_client(clients, hc)
-        if c:
-            headers = c.get("headers") or {}
-            return headers.get("User-Agent") or headers.get("user-agent") or "clash.meta"
-    return "clash.meta"
+from config_io import configure_console, ConfigError, read_json as load, save_profile
+from provider_policy import effective_ua, get_client, safe_tag, set_user_agent
 
 
 def patch(profile: Path, provider_tag: str, seed_path: str, detour: str = "PROXY"):
@@ -60,10 +27,10 @@ def patch(profile: Path, provider_tag: str, seed_path: str, detour: str = "PROXY
         raise SystemExit(f"provider not found: {provider_tag}")
     if provider.get("type") != "remote":
         raise SystemExit(f"provider {provider_tag} is not type=remote")
+    if not any(out.get("tag") == detour for out in data.get("outbounds", [])):
+        raise ConfigError("Provider refresh detour 引用了不存在的出站。")
 
-    seed = Path(seed_path).expanduser()
-    if not seed.is_absolute():
-        seed = seed.resolve()
+    seed = Path(seed_path).expanduser().resolve()
     if not seed.is_file() or seed.stat().st_size == 0:
         raise SystemExit(f"seed file does not exist or is empty: {seed}")
 
@@ -100,17 +67,17 @@ def patch(profile: Path, provider_tag: str, seed_path: str, detour: str = "PROXY
     # outbound handles the destination. Remove bootstrap-only dial fields to avoid ambiguity.
     base.pop("domain_resolver", None)
     base.pop("domain_strategy", None)
-    headers = base.setdefault("headers", {})
-    headers["User-Agent"] = ua
+    set_user_agent(base, ua)
     clients.append(base)
     provider["http_client"] = new_tag
 
     # Keep a reasonably infrequent normal refresh. Do not make this less than the core minimum.
     provider.setdefault("update_interval", "24h")
 
-    backup = profile.with_suffix(profile.suffix + ".bak")
-    shutil.copy2(profile, backup)
-    profile.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    backup = save_profile(profile, data)
+    if backup is None:
+        print("Provider bootstrap settings already applied.")
+        return
     print(f"Patched provider: {provider_tag}")
     print(f"initial_path: {seed}")
     print(f"refresh detour: {detour}")
@@ -118,6 +85,7 @@ def patch(profile: Path, provider_tag: str, seed_path: str, detour: str = "PROXY
 
 
 def main():
+    configure_console()
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("profile")
     ap.add_argument("provider_tag")
@@ -128,4 +96,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except ConfigError as exc:
+        raise SystemExit(str(exc)) from None

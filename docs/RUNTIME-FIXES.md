@@ -26,7 +26,7 @@ py -3 scripts/fix_provider_bootstrap.py .\windows-profile.json Airport-A "C:\Use
 py -3 scripts/fix_ruleset_bootstrap.py .\windows-profile.json Airport-A
 ```
 
-下载后先将 seed 移到上述稳定路径。7891 必须是另一套已可用客户端的 HTTP 代理；可直连下载时省略 --proxy。所有无法直连、无缓存的 remote Provider 均需独立 seed。脚本先备份再写入；连续迁移前自行保留原始文件，部分脚本共享 .bak 文件名。
+下载后先将 seed 移到上述稳定路径。7891 必须是另一套已可用客户端的 HTTP 代理；可直连下载时省略 --proxy。所有无法直连、无缓存的 remote Provider 均需独立 seed。脚本先备份再原子写入；已有 .bak 时使用 .bak-2、.bak-3 等，保留各次迁移前的内容。重复应用同一修复不改写 Profile。请保留整个 scripts 目录，迁移入口依赖同目录下的共享模块。
 
 若规则集冷启动下载仍失败：
 
@@ -43,6 +43,21 @@ py -3 scripts/build.py windows --keep-seed-paths
 ```
 
 此选项保留原路径，导入客户端前应确认所有路径在目标 Windows 主机和 daemon 工作目录下可访问。也可每次构建后对生成文件应用 bootstrap 脚本。远程 Provider 的 path 始终从 Desktop 输出删除。
+
+## MANUAL 选择 Claude 专用节点
+
+新生成的配置中，MANUAL 同时包含普通机场与 Claude-Dedicated 的节点；AUTO、地区组、RULESET-BOOTSTRAP 仍仅包含普通机场。CLAUDE 仍只有 REJECT 与 Claude-Dedicated 节点。
+
+从源码更新已有配置：
+
+```powershell
+py -3 scripts/manage.py sync-providers
+py -3 scripts/build.py windows --keep-seed-paths
+```
+
+未使用 seed 时可省略 --keep-seed-paths。重新导入生成的 Profile 后，在 MANUAL 中直接选择 Claude-Dedicated/节点名称。若要让普通代理流量使用该节点，还要将 PROXY 选择为 MANUAL；CLAUDE 的选择单独控制。
+
+直接维护单文件 Profile 时，在 MANUAL.providers 数组中追加 Claude-Dedicated 即可。保留 MANUAL 的 selector 类型与原 default，不要在 AUTO 或地区组中追加专用 Provider。
 
 local DNS 的可用性取决于系统网络；下载超时本身不足以证明 DNS 已成功。运行期更新、真实订阅、Windows TUN 与防火墙仍需实机验证。
 
